@@ -3,49 +3,103 @@ Baseline for CIL project on road segmentation.
 This simple baseline consits of a CNN with two convolutional+pooling layers with a soft-max loss
 """
 
-
-
 import gzip
 import os
 import sys
 import urllib
 import matplotlib.image as mpimg
 from PIL import Image
+import pdb
 
 import code
 
 import tensorflow.python.platform
 
-import numpy
+import numpy as np
 import tensorflow as tf
 
 NUM_CHANNELS = 3 # RGB images
 PIXEL_DEPTH = 255
 NUM_LABELS = 2
 TRAINING_SIZE = 20
-VALIDATION_SIZE = 5  # Size of the validation set.
+TEST_SIZE = 50
+VALIDATION_SIZE = 5  # Size of the validation set. Not used
 SEED = 66478  # Set to None for random seed.
 BATCH_SIZE = 16 # 64
-NUM_EPOCHS = 5
+NUM_EPOCHS = 40
 RESTORE_MODEL = False # If True, restore existing model instead of training a new one
 RECORDING_STEP = 1000
 
 # Set image patch size in pixels
 # IMG_PATCH_SIZE should be a multiple of 4
 # image size should be an integer multiple of this number!
-IMG_PATCH_SIZE = 16
+IMG_PATCH_SIZE= 40 ## Training images are 400 x 400 x 3, Testing are 608 x 608 x 3
 
 tf.app.flags.DEFINE_string('train_dir', '/tmp/mnist',
                            """Directory where to write event logs """
                            """and checkpoint.""")
 FLAGS = tf.app.flags.FLAGS
 
-# Extract patches from a given image
-def img_crop(im, w, h):
+def img_crop(im, w, h, aerial_image):
+    """
+    Extracts patches from a given image
+    Args:
+        im: image
+        w: width
+        h: height
+    Returns:
+        list with patches of images
+    """
     list_patches = []
     imgwidth = im.shape[0]
     imgheight = im.shape[1]
-    is_2d = len(im.shape) < 3
+    is_2d = len(im.shape) < 3 ## 3 channels RBG
+    ## creating padding in the image if there is not a whole number of patches which fit on the image
+    rw = imgwidth % w
+    if rw != 0:
+        if aerial_image:
+            if is_2d:
+                ## append mean to width of image
+                tmp_r = np.full((rw, imgheight), np.mean(im[:,:,0]), dtype=float)
+                tmp_b = np.full((rw, imgheight), np.mean(im[:,:,1]), dtype=float)
+                tmp_g = np.full((rw, imgheight), np.mean(im[:,:,2]), dtype=float)
+                tmp = np.stack((tmp_r, tmp_b, tmp_g), axis=2)
+                assert tmp.shape == (rw, imgheight, 3), 'width padding not the correct shape'
+                im_padded = np.concatenate((im, tmp), axis=0)
+            else:
+                ## append means to image channels
+                tmp = np.full((rw, imgheight), np.mean(im), dtype=float)
+                im_padded = np.concatenate((im,tmp), axis=0)
+        else:
+            ## gt images are of size (w,h) no RBG
+            tmp = np.full((rw, imgheight), 0, dtype=int)
+            im_padded = np.concatenate((im,tmp), axis=0)
+
+    ## overwriting original width and height
+    imgwidth = im.shape[0]
+    imgheight = im.shape[1]
+    rh = imgheight % h
+    if rh != 0:
+        if aerial_image:
+            if is_2d:
+                ## append mean to width of image
+                tmp_r = np.full((imgwidth, rh), np.mean(im[:,:,0]), dtype=float)
+                tmp_b = np.full((imgwidth, rh), np.mean(im[:,:,1]), dtype=float)
+                tmp_g = np.full((imgwidth, rh), np.mean(im[:,:,2]), dtype=float)
+                tmp = np.stack((tmp_r, tmp_b, tmp_g), axis=2)
+                assert tmp.shape == (imgwidth, rh, 3), 'height padding not the correct shape'
+                im_padded = np.concatenate((im_padded, tmp), axis=0)
+            else:
+                tmp = np.full((imgwidth, rh), np.mean(im), dtype=int)
+                im_padded = np.concatenate((im_padded,tmp), axis=1)
+        else:
+            ## gt images are of size (w,h) no RBG
+            tmp = np.full((imgwidth, rh), 0, dtype=int)
+            im_padded = np.concatenate((im_padded,tmp), axis=1)
+
+    ## overwriting original height
+    imgheight = im.shape[1]
+    assert imgwidth % w == 0 and imgheight % h == 0, 'New img dimensions are not wholly covered by patches'
     for i in range(0,imgheight,h):
         for j in range(0,imgwidth,w):
             if is_2d:
@@ -73,21 +127,30 @@ def extract_data(filename, num_images):
     num_images = len(imgs)
     IMG_WIDTH = imgs[0].shape[0]
     IMG_HEIGHT = imgs[0].shape[1]
-    N_PATCHES_PER_IMAGE = (IMG_WIDTH/IMG_PATCH_SIZE)*(IMG_HEIGHT/IMG_PATCH_SIZE)
+    ##N_PATCHES_PER_IMAGE = (IMG_WIDTH/IMG_PATCH_SIZE)*(IMG_HEIGHT/IMG_PATCH_SIZE)
 
-    img_patches = [img_crop(imgs[i], IMG_PATCH_SIZE, IMG_PATCH_SIZE) for i in range(num_images)]
+    ## Dividing each image up into patches of size [IMG_PATCH_SIZE x IMG_PATCH_SIZE]
+    img_patches = [img_crop(imgs[i], IMG_PATCH_SIZE, IMG_PATCH_SIZE, aerial_image=True) for i in range(num_images)] ## list of list
     data = [img_patches[i][j] for i in range(len(img_patches)) for j in range(len(img_patches[i]))]
 
-    return numpy.asarray(data)
+    return np.asarray(data)
 
 # Assign a label to a patch v
 def value_to_class(v):
+    """
+    Args:
+        v: patch
+    Returns:
+        one hot encoding of the label of the patch
+    """
     foreground_threshold = 0.25 # percentage of pixels > 1 required to assign a foreground label to a patch
-    df = numpy.sum(v)
+    df = np.sum(v)
     if df > foreground_threshold:
-        return [0, 1]
+        return [1, 0] ## road
+        ## return [0, 1]
     else:
-        return [1, 0]
+        return [0, 1] ## not road
+        ## return [1, 0]
 
 # Extract label images
 def extract_labels(filename, num_images):
@@ -104,25 +167,24 @@ def extract_labels(filename, num_images):
             print ('File ' + image_filename + ' does not exist')
 
     num_images = len(gt_imgs)
-    gt_patches = [img_crop(gt_imgs[i], IMG_PATCH_SIZE, IMG_PATCH_SIZE) for i in range(num_images)]
-    data = numpy.asarray([gt_patches[i][j] for i in range(len(gt_patches)) for j in range(len(gt_patches[i]))])
-    labels = numpy.asarray([value_to_class(numpy.mean(data[i])) for i in range(len(data))])
+    ## cropping images to [IMG_PATCH_SIZE, IMG_PATCH_SIZE]
+    ## pdb.set_trace()
+    gt_patches = [img_crop(gt_imgs[i], IMG_PATCH_SIZE, IMG_PATCH_SIZE, aerial_image=False) for i in range(num_images)] ## list of lists
+    data = np.asarray([gt_patches[i][j] for i in range(len(gt_patches)) for j in range(len(gt_patches[i]))]) ## converting to an array
+    labels = np.asarray([value_to_class(np.mean(data[i])) for i in range(len(data))])
 
     # Convert to dense 1-hot representation.
-    return labels.astype(numpy.float32)
+    return labels.astype(np.float32)
 
 
 def error_rate(predictions, labels):
     """Return the error rate based on dense predictions and 1-hot labels."""
-    return 100.0 - (
-        100.0 *
-        numpy.sum(numpy.argmax(predictions, 1) == numpy.argmax(labels, 1)) /
-        predictions.shape[0])
+    return 100.0 - (100.0 * np.sum(np.argmax(predictions, 1) == np.argmax(labels, 1)) / predictions.shape[0])
 
 # Write predictions from neural network to a file
 def write_predictions_to_file(predictions, labels, filename):
-    max_labels = numpy.argmax(labels, 1)
-    max_predictions = numpy.argmax(predictions, 1)
+    max_labels = np.argmax(labels, 1)
+    max_predictions = np.argmax(predictions, 1)
     file = open(filename, "w")
     n = predictions.shape[0]
     for i in range(0, n):
@@ -131,13 +193,24 @@ def write_predictions_to_file(predictions, labels, filename):
 
 # Print predictions from neural network
 def print_predictions(predictions, labels):
-    max_labels = numpy.argmax(labels, 1)
-    max_predictions = numpy.argmax(predictions, 1)
+    max_labels = np.argmax(labels, 1)
+    max_predictions = np.argmax(predictions, 1)
     print (str(max_labels) + ' ' + str(max_predictions))
 
 # Convert array of labels to an image
 def label_to_img(imgwidth, imgheight, w, h, labels):
-    array_labels = numpy.zeros([imgwidth, imgheight])
+    """
+    Args:
+        imgwidth: the width of the image
+        imgheight: the height of the image
+        w: the width of the patch of image
+        h: the height of the patch of the image
+        labels: tensor the predictions
+    Returns:
+        numpy array of the size [imgwidth, imgheight] with 0s and 1s indicating not road not road
+        respectively
+    """
+    array_labels = np.zeros([imgwidth, imgheight])
     idx = 0
     for i in range(0,imgheight,h):
         for j in range(0,imgwidth,w):
@@ -150,30 +223,36 @@ def label_to_img(imgwidth, imgheight, w, h, labels):
     return array_labels
 
 def img_float_to_uint8(img):
-    rimg = img - numpy.min(img)
-    rimg = (rimg / numpy.max(rimg) * PIXEL_DEPTH).round().astype(numpy.uint8)
+    rimg = img - np.min(img)
+    rimg = (rimg / np.max(rimg) * PIXEL_DEPTH).round().astype(np.uint8)
     return rimg
 
 def concatenate_images(img, gt_img):
+    """
+    Concatenates an image with its ground truth for easy visulisation
+    """
     nChannels = len(gt_img.shape)
     w = gt_img.shape[0]
     h = gt_img.shape[1]
     if nChannels == 3:
-        cimg = numpy.concatenate((img, gt_img), axis=1)
+        cimg = np.concatenate((img, gt_img), axis=1)
     else:
-        gt_img_3c = numpy.zeros((w, h, 3), dtype=numpy.uint8)
+        gt_img_3c = np.zeros((w, h, 3), dtype=np.uint8)
         gt_img8 = img_float_to_uint8(gt_img)
         gt_img_3c[:,:,0] = gt_img8
         gt_img_3c[:,:,1] = gt_img8
         gt_img_3c[:,:,2] = gt_img8
         img8 = img_float_to_uint8(img)
-        cimg = numpy.concatenate((img8, gt_img_3c), axis=1)
+        cimg = np.concatenate((img8, gt_img_3c), axis=1)
     return cimg
 
 def make_img_overlay(img, predicted_img):
+    """
+    Overlays the prediction on top of the image
+    """
     w = img.shape[0]
     h = img.shape[1]
-    color_mask = numpy.zeros((w, h, 3), dtype=numpy.uint8)
+    color_mask = np.zeros((w, h, 3), dtype=np.uint8)
     color_mask[:,:,0] = predicted_img*PIXEL_DEPTH
 
     img8 = img_float_to_uint8(img)
@@ -186,12 +265,12 @@ def make_img_overlay(img, predicted_img):
 def main(argv=None):  # pylint: disable=unused-argument
 
     data_dir = 'training/'
-    train_data_filename = data_dir + 'images/'
-    train_labels_filename = data_dir + 'groundtruth/'
+    train_data_dir = data_dir + 'images/'
+    train_labels_dir = data_dir + 'groundtruth/'
 
     # Extract it into numpy arrays.
-    train_data = extract_data(train_data_filename, TRAINING_SIZE)
-    train_labels = extract_labels(train_labels_filename, TRAINING_SIZE)
+    train_data = extract_data(train_data_dir, TRAINING_SIZE)
+    train_labels = extract_labels(train_labels_dir, TRAINING_SIZE)
 
     num_epochs = NUM_EPOCHS
 
@@ -209,11 +288,10 @@ def main(argv=None):  # pylint: disable=unused-argument
     idx0 = [i for i, j in enumerate(train_labels) if j[0] == 1]
     idx1 = [i for i, j in enumerate(train_labels) if j[1] == 1]
     new_indices = idx0[0:min_c] + idx1[0:min_c]
-    print (len(new_indices))
-    print (train_data.shape)
+    print("length of new_indices: {}".format(len(new_indices)))
+    print("shape of training data: {}".format(train_data.shape))
     train_data = train_data[new_indices,:,:,:]
     train_labels = train_labels[new_indices]
-
 
     train_size = train_labels.shape[0]
 
@@ -225,7 +303,6 @@ def main(argv=None):  # pylint: disable=unused-argument
         else:
             c1 = c1 + 1
     print ('Number of data points per class: c0 = ' + str(c0) + ' c1 = ' + str(c1))
-
 
     # This is where training samples and labels are fed to the graph.
     # These placeholder nodes will be fed a batch of training data at each
@@ -287,31 +364,72 @@ def main(argv=None):  # pylint: disable=unused-argument
 
     # Get prediction for given input image
     def get_prediction(img):
-        data = numpy.asarray(img_crop(img, IMG_PATCH_SIZE, IMG_PATCH_SIZE))
+        data = np.asarray(img_crop(img, IMG_PATCH_SIZE, IMG_PATCH_SIZE))
         data_node = tf.constant(data)
         output = tf.nn.softmax(model(data_node))
         output_prediction = s.run(output)
         img_prediction = label_to_img(img.shape[0], img.shape[1], IMG_PATCH_SIZE, IMG_PATCH_SIZE, output_prediction)
-
         return img_prediction
 
+    def _get_prediction(fn):
+        """
+        Wrapper around the get_prediction function
+        """
+        print("prediction for image: {}".format(fn))
+        img = mpimg.imread(fn)
+        data = get_prediction(img)
+        ## Convert to RGB image
+        nChannels = len(data.shape)
+        w = data.shape[0]
+        h = data.shape[1]
+        if nChannels == 3:
+            return img
+        else:
+            img_3c = np.zeros((w, h, 3), dtype=np.uint8)
+            img8 = img_float_to_uint8(data)
+            img_3c[:,:,0] = img8
+            img_3c[:,:,1] = img8
+            img_3c[:,:,2] = img8
+            return img_3c
+
     # Get a concatenation of the prediction and groundtruth for given input file
-    def get_prediction_with_groundtruth(filename, image_idx):
-
-        imageid = "satImage_%.3d" % image_idx
-        image_filename = filename + imageid + ".png"
+    def get_prediction_with_groundtruth(directory, image_idx, training=True):
+        """
+        Args:
+            directory: str
+            image_idx: int
+            training: bool
+        Returns:
+            Prediction for the image input, prediction is concatenated with original
+        """
+        if training:
+            imageid = "satImage_%.3d" % image_idx
+        else:
+            imageid = "test_" + str(image_idx)
+        image_filename = directory + imageid + ".png"
+        print("prediction for image: {}".format(image_filename))
         img = mpimg.imread(image_filename)
-
         img_prediction = get_prediction(img)
         cimg = concatenate_images(img, img_prediction)
 
         return cimg
 
     # Get prediction overlaid on the original image for given input file
-    def get_prediction_with_overlay(filename, image_idx):
-
-        imageid = "satImage_%.3d" % image_idx
-        image_filename = filename + imageid + ".png"
+    def get_prediction_with_overlay(directory, image_idx, training=True):
+        """
+        Args:
+            directory: str
+            image_idx: int
+            training: bool
+        Returns:
+            Prediction for the image input, prediction is overlayed on original
+        """
+        if training:
+            imageid = "satImage_%.3d" % image_idx
+        else:
+            imageid = "test_" + str(image_idx)
+        image_filename = directory + imageid + ".png"
+        print("prediction for image: {}".format(image_filename))
         img = mpimg.imread(image_filename)
 
         img_prediction = get_prediction(img)
@@ -350,11 +468,11 @@ def main(argv=None):  # pylint: disable=unused-argument
                               padding='SAME')
 
         # Uncomment these lines to check the size of each layer
-        # print 'data ' + str(data.get_shape())
-        # print 'conv ' + str(conv.get_shape())
-        # print 'relu ' + str(relu.get_shape())
-        # print 'pool ' + str(pool.get_shape())
-        # print 'pool2 ' + str(pool2.get_shape())
+        print 'data ' + str(data.get_shape())
+        print 'conv ' + str(conv.get_shape())
+        print 'relu ' + str(relu.get_shape())
+        print 'pool ' + str(pool.get_shape())
+        print 'pool2 ' + str(pool2.get_shape())
 
 
         # Reshape the feature map cuboid into a 2D matrix to feed it to the
@@ -435,8 +553,6 @@ def main(argv=None):  # pylint: disable=unused-argument
 
     # Create a local session to run this computation.
     with tf.Session() as s:
-
-
         if RESTORE_MODEL:
             # Restore variables from disk.
             saver.restore(s, FLAGS.train_dir + "/model.ckpt")
@@ -459,7 +575,7 @@ def main(argv=None):  # pylint: disable=unused-argument
             for iepoch in range(num_epochs):
 
                 # Permute training indices
-                perm_indices = numpy.random.permutation(training_indices)
+                perm_indices = np.random.permutation(training_indices)
 
                 for step in range (int(train_size / BATCH_SIZE)):
 
@@ -502,16 +618,27 @@ def main(argv=None):  # pylint: disable=unused-argument
                 save_path = saver.save(s, FLAGS.train_dir + "/model.ckpt")
                 print("Model saved in file: %s" % save_path)
 
-
-        print ("Running prediction on training set")
-        prediction_training_dir = "predictions_training/"
-        if not os.path.isdir(prediction_training_dir):
-            os.mkdir(prediction_training_dir)
-        for i in range(1, TRAINING_SIZE+1):
-            pimg = get_prediction_with_groundtruth(train_data_filename, i)
-            Image.fromarray(pimg).save(prediction_training_dir + "prediction_" + str(i) + ".png")
-            oimg = get_prediction_with_overlay(train_data_filename, i)
-            oimg.save(prediction_training_dir + "overlay_" + str(i) + ".png")
+        if not RESTORE_MODEL:
+            print ("Running prediction on training set")
+            prediction_training_dir = "predictions_training/"
+            if not os.path.isdir(prediction_training_dir):
+                os.mkdir(prediction_training_dir)
+            for i in range(1, TRAINING_SIZE+1):
+                pimg = get_prediction_with_groundtruth(train_data_dir, i)
+                Image.fromarray(pimg).save(prediction_training_dir + "prediction_" + str(i) + ".png")
+                oimg = get_prediction_with_overlay(train_data_dir, i)
+                oimg.save(prediction_training_dir + "overlay_" + str(i) + ".png")
+        else:
+            print("Running prediction on test set")
+            test_dir = "test_set_images/"
+            for i in range(1, TEST_SIZE+1):
+                test_data_filename = test_dir + "test_" + str(i) + "/" ## the rest of the string is added in the prediction functions below
+                pimg = get_prediction_with_groundtruth(test_data_filename, i, training=False)
+                Image.fromarray(pimg).save(test_data_filename + "prediction_" + str(i) + ".png")
+                oimg = get_prediction_with_overlay(test_data_filename, i, training=False)
+                oimg.save(test_data_filename + "overlay_" + str(i) + ".png")
+                img  = _get_prediction(test_data_filename +  "test_" + str(i) + ".png")
+                Image.fromarray(img).save(test_data_filename + "final_" + str(i) + ".png")
 
 if __name__ == '__main__':
     tf.app.run()

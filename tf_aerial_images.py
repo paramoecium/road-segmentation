@@ -10,11 +10,9 @@ import urllib
 import matplotlib.image as mpimg
 from PIL import Image
 import pdb
-
+from skimage.transform import rotate
 import code
-
 import tensorflow.python.platform
-
 import numpy as np
 import tensorflow as tf
 
@@ -26,14 +24,15 @@ TEST_SIZE = 50
 VALIDATION_SIZE = 5  # Size of the validation set. Not used
 SEED = 66478  # Set to None for random seed.
 BATCH_SIZE = 16 # 64
-NUM_EPOCHS = 40
+NUM_EPOCHS = 5
 RESTORE_MODEL = False # If True, restore existing model instead of training a new one
 RECORDING_STEP = 1000
+ROTATE_IMAGES = False
 
 # Set image patch size in pixels
 # IMG_PATCH_SIZE should be a multiple of 4
 # image size should be an integer multiple of this number!
-IMG_PATCH_SIZE= 40 ## Training images are 400 x 400 x 3, Testing are 608 x 608 x 3
+IMG_PATCH_SIZE= 62 ## Training images are 400 x 400 x 3, Testing are 608 x 608 x 3
 
 tf.app.flags.DEFINE_string('train_dir', '/tmp/mnist',
                            """Directory where to write event logs """
@@ -55,57 +54,67 @@ def img_crop(im, w, h, aerial_image):
     imgheight = im.shape[1]
     is_2d = len(im.shape) < 3 ## 3 channels RBG
     ## creating padding in the image if there is not a whole number of patches which fit on the image
+    ## creating padding for bottom of image
     rw = imgwidth % w
+    pad_width = w - rw
     if rw != 0:
         if aerial_image:
             if is_2d:
-                ## append mean to width of image
-                tmp_r = np.full((rw, imgheight), np.mean(im[:,:,0]), dtype=float)
-                tmp_b = np.full((rw, imgheight), np.mean(im[:,:,1]), dtype=float)
-                tmp_g = np.full((rw, imgheight), np.mean(im[:,:,2]), dtype=float)
-                tmp = np.stack((tmp_r, tmp_b, tmp_g), axis=2)
-                assert tmp.shape == (rw, imgheight, 3), 'width padding not the correct shape'
-                im_padded = np.concatenate((im, tmp), axis=0)
-            else:
                 ## append means to image channels
-                tmp = np.full((rw, imgheight), np.mean(im), dtype=float)
+                tmp = np.full((pad_width, imgheight), np.mean(im), dtype=float)
+                pdb.set_trace()
                 im_padded = np.concatenate((im,tmp), axis=0)
+            else:
+                ## append mean to width of image
+                tmp_r = np.full((pad_width, imgheight), np.mean(im[:,:,0]), dtype=float)
+                tmp_b = np.full((pad_width, imgheight), np.mean(im[:,:,1]), dtype=float)
+                tmp_g = np.full((pad_width, imgheight), np.mean(im[:,:,2]), dtype=float)
+                tmp = np.stack((tmp_r, tmp_b, tmp_g), axis=2) ## axis=2 creates new dim
+                assert tmp.shape == (pad_width, imgheight, 3), 'width padding not the correct shape'
+                ##pdb.set_trace()
+                im_padded = np.concatenate((im, tmp), axis=0)
         else:
             ## gt images are of size (w,h) no RBG
-            tmp = np.full((rw, imgheight), 0, dtype=int)
+            tmp = np.full((pad_width, imgheight), 0, dtype=int)
             im_padded = np.concatenate((im,tmp), axis=0)
 
-    ## overwriting original width and height
-    imgwidth = im.shape[0]
-    imgheight = im.shape[1]
+    ## creating padding for the right of the image
+    imgwidth_new = im_padded.shape[0]
     rh = imgheight % h
+    pad_height = h - rh
     if rh != 0:
         if aerial_image:
             if is_2d:
-                ## append mean to width of image
-                tmp_r = np.full((imgwidth, rh), np.mean(im[:,:,0]), dtype=float)
-                tmp_b = np.full((imgwidth, rh), np.mean(im[:,:,1]), dtype=float)
-                tmp_g = np.full((imgwidth, rh), np.mean(im[:,:,2]), dtype=float)
-                tmp = np.stack((tmp_r, tmp_b, tmp_g), axis=2)
-                assert tmp.shape == (imgwidth, rh, 3), 'height padding not the correct shape'
-                im_padded = np.concatenate((im_padded, tmp), axis=0)
-            else:
-                tmp = np.full((imgwidth, rh), np.mean(im), dtype=int)
+                tmp = np.full((imgwidth_new, pad_height), np.mean(im), dtype=int)
                 im_padded = np.concatenate((im_padded,tmp), axis=1)
+            else:
+                ## append mean to width of image
+                tmp_r = np.full((imgwidth_new, pad_height), np.mean(im[:,:,0]), dtype=float)
+                tmp_b = np.full((imgwidth_new, pad_height), np.mean(im[:,:,1]), dtype=float)
+                tmp_g = np.full((imgwidth_new, pad_height), np.mean(im[:,:,2]), dtype=float)
+                tmp = np.stack((tmp_r, tmp_b, tmp_g), axis=2)
+                assert tmp.shape == (imgwidth_new, pad_height, 3), 'height padding not the correct shape'
+                im_padded = np.concatenate((im_padded, tmp), axis=1) ## axis = 1 to concatenate along cols
+                ##Image.fromarray(img_float_to_uint8(im_padded)).save("padded.png")
+                ##pdb.set_trace()
         else:
             ## gt images are of size (w,h) no RBG
-            tmp = np.full((imgwidth, rh), 0, dtype=int)
+            tmp = np.full((imgwidth_new, pad_height), 0, dtype=int)
+            assert tmp.shape == (imgwidth_new, pad_height), 'height padding not the correct shape'
             im_padded = np.concatenate((im_padded,tmp), axis=1)
+            ##Image.fromarray(img_float_to_uint8(im_padded)).save("padded_gt.png")
+            ##pdb.set_trace()
 
     ## overwriting original height
-    imgheight = im.shape[1]
-    assert imgwidth % w == 0 and imgheight % h == 0, 'New img dimensions are not wholly covered by patches'
-    for i in range(0,imgheight,h):
-        for j in range(0,imgwidth,w):
+    imgheight_new = im_padded.shape[1]
+    ##pdb.set_trace()
+    assert imgwidth_new % w == 0 and imgheight_new % h == 0, 'New img dimensions are not wholly covered by patches'
+    for i in range(0,imgheight_new,h):
+        for j in range(0,imgwidth_new,w):
             if is_2d:
-                im_patch = im[j:j+w, i:i+h]
+                im_patch = im_padded[j:j+w, i:i+h]
             else:
-                im_patch = im[j:j+w, i:i+h, :]
+                im_patch = im_padded[j:j+w, i:i+h, :]
             list_patches.append(im_patch)
     return list_patches
 
@@ -120,18 +129,22 @@ def extract_data(filename, num_images):
         if os.path.isfile(image_filename):
             print ('Loading ' + image_filename)
             img = mpimg.imread(image_filename)
+            if ROTATE_IMAGES:
+                pass
             imgs.append(img)
         else:
             print ('File ' + image_filename + ' does not exist')
 
+    if ROTATE_IMAGES:
+        imgs
     num_images = len(imgs)
     IMG_WIDTH = imgs[0].shape[0]
     IMG_HEIGHT = imgs[0].shape[1]
-    ##N_PATCHES_PER_IMAGE = (IMG_WIDTH/IMG_PATCH_SIZE)*(IMG_HEIGHT/IMG_PATCH_SIZE)
 
     ## Dividing each image up into patches of size [IMG_PATCH_SIZE x IMG_PATCH_SIZE]
     img_patches = [img_crop(imgs[i], IMG_PATCH_SIZE, IMG_PATCH_SIZE, aerial_image=True) for i in range(num_images)] ## list of list
     data = [img_patches[i][j] for i in range(len(img_patches)) for j in range(len(img_patches[i]))]
+    ##pdb.set_trace()
 
     return np.asarray(data)
 
@@ -227,21 +240,35 @@ def img_float_to_uint8(img):
     rimg = (rimg / np.max(rimg) * PIXEL_DEPTH).round().astype(np.uint8)
     return rimg
 
+def data2img(data):
+    """
+    Converts 2d numpy data to image to RGB image ready for viewing.
+    Args:
+        data is a 2d numpy array
+    Returns:
+        img is an image object which may be saved
+    """
+    w = data.shape[0]
+    h = data.shape[1]
+    assert len(data.shape) < 3, 'data needs to be 2d'
+    img_3c = np.zeros((w, h, 3), dtype=np.uint8)
+    img8 = img_float_to_uint8(data)
+    img_3c[:,:,0] = img8
+    img_3c[:,:,1] = img8
+    img_3c[:,:,2] = img8
+    return img_3c
+
 def concatenate_images(img, gt_img):
     """
     Concatenates an image with its ground truth for easy visulisation
     """
     nChannels = len(gt_img.shape)
-    w = gt_img.shape[0]
-    h = gt_img.shape[1]
+    ##w = gt_img.shape[0]
+    ##h = gt_img.shape[1]
     if nChannels == 3:
         cimg = np.concatenate((img, gt_img), axis=1)
     else:
-        gt_img_3c = np.zeros((w, h, 3), dtype=np.uint8)
-        gt_img8 = img_float_to_uint8(gt_img)
-        gt_img_3c[:,:,0] = gt_img8
-        gt_img_3c[:,:,1] = gt_img8
-        gt_img_3c[:,:,2] = gt_img8
+        gt_img_3c = data2img(gt_img)
         img8 = img_float_to_uint8(img)
         cimg = np.concatenate((img8, gt_img_3c), axis=1)
     return cimg
@@ -364,7 +391,7 @@ def main(argv=None):  # pylint: disable=unused-argument
 
     # Get prediction for given input image
     def get_prediction(img):
-        data = np.asarray(img_crop(img, IMG_PATCH_SIZE, IMG_PATCH_SIZE))
+        data = np.asarray(img_crop(img, IMG_PATCH_SIZE, IMG_PATCH_SIZE, aerial_image=False))
         data_node = tf.constant(data)
         output = tf.nn.softmax(model(data_node))
         output_prediction = s.run(output)
@@ -380,17 +407,10 @@ def main(argv=None):  # pylint: disable=unused-argument
         data = get_prediction(img)
         ## Convert to RGB image
         nChannels = len(data.shape)
-        w = data.shape[0]
-        h = data.shape[1]
         if nChannels == 3:
-            return img
+            return data
         else:
-            img_3c = np.zeros((w, h, 3), dtype=np.uint8)
-            img8 = img_float_to_uint8(data)
-            img_3c[:,:,0] = img8
-            img_3c[:,:,1] = img8
-            img_3c[:,:,2] = img8
-            return img_3c
+            return data2img(data)
 
     # Get a concatenation of the prediction and groundtruth for given input file
     def get_prediction_with_groundtruth(directory, image_idx, training=True):
@@ -483,6 +503,7 @@ def main(argv=None):  # pylint: disable=unused-argument
             [pool_shape[0], pool_shape[1] * pool_shape[2] * pool_shape[3]])
         # Fully connected layer. Note that the '+' operation automatically
         # broadcasts the biases.
+        pdb.set_trace()
         hidden = tf.nn.relu(tf.matmul(reshape, fc1_weights) + fc1_biases)
         # Add a 50% dropout during training only. Dropout also scales
         # activations such that no rescaling is needed at evaluation time.

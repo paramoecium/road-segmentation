@@ -21,7 +21,7 @@ PIXEL_DEPTH = 255
 NUM_LABELS = 2
 TRAINING_SIZE = 20
 TEST_SIZE = 50
-VALIDATION_SIZE = 5  # Size of the validation set. Not used
+VALIDATION_SIZE = 10  # Size of the validation set. Not used
 SEED = 66478  # Set to None for random seed.
 BATCH_SIZE = 16 # 64
 NUM_EPOCHS = 5
@@ -32,7 +32,7 @@ ROTATE_IMAGES = False
 # Set image patch size in pixels
 # IMG_PATCH_SIZE should be a multiple of 4
 # image size should be an integer multiple of this number!
-IMG_PATCH_SIZE= 62 ## Training images are 400 x 400 x 3, Testing are 608 x 608 x 3
+IMG_PATCH_SIZE = 40 ## Training images are 400 x 400 x 3, Testing are 608 x 608 x 3
 
 tf.app.flags.DEFINE_string('train_dir', '/tmp/mnist',
                            """Directory where to write event logs """
@@ -61,22 +61,27 @@ def img_crop(im, w, h, aerial_image):
         if aerial_image:
             if is_2d:
                 ## append means to image channels
-                tmp = np.full((pad_width, imgheight), np.mean(im), dtype=float)
-                pdb.set_trace()
+                tmp = np.full((pad_width, imgheight), np.mean(im))
+                ##pdb.set_trace()
                 im_padded = np.concatenate((im,tmp), axis=0)
             else:
                 ## append mean to width of image
-                tmp_r = np.full((pad_width, imgheight), np.mean(im[:,:,0]), dtype=float)
-                tmp_b = np.full((pad_width, imgheight), np.mean(im[:,:,1]), dtype=float)
-                tmp_g = np.full((pad_width, imgheight), np.mean(im[:,:,2]), dtype=float)
+                tmp_r = np.full((pad_width, imgheight), np.mean(im[:,:,0]))
+                tmp_b = np.full((pad_width, imgheight), np.mean(im[:,:,1]))
+                tmp_g = np.full((pad_width, imgheight), np.mean(im[:,:,2]))
                 tmp = np.stack((tmp_r, tmp_b, tmp_g), axis=2) ## axis=2 creates new dim
                 assert tmp.shape == (pad_width, imgheight, 3), 'width padding not the correct shape'
                 ##pdb.set_trace()
                 im_padded = np.concatenate((im, tmp), axis=0)
         else:
             ## gt images are of size (w,h) no RBG
-            tmp = np.full((pad_width, imgheight), 0, dtype=int)
+            tmp = np.full((pad_width, imgheight), 0)
+            ##pdb.set_trace()
+            ##print("tmp shape: {}".format(tmp.shape))
+            ##print("im shape: {}".format(im.shape))
             im_padded = np.concatenate((im,tmp), axis=0)
+    else:
+        im_padded = im
 
     ## creating padding for the right of the image
     imgwidth_new = im_padded.shape[0]
@@ -85,13 +90,13 @@ def img_crop(im, w, h, aerial_image):
     if rh != 0:
         if aerial_image:
             if is_2d:
-                tmp = np.full((imgwidth_new, pad_height), np.mean(im), dtype=int)
+                tmp = np.full((imgwidth_new, pad_height), np.mean(im))
                 im_padded = np.concatenate((im_padded,tmp), axis=1)
             else:
                 ## append mean to width of image
-                tmp_r = np.full((imgwidth_new, pad_height), np.mean(im[:,:,0]), dtype=float)
-                tmp_b = np.full((imgwidth_new, pad_height), np.mean(im[:,:,1]), dtype=float)
-                tmp_g = np.full((imgwidth_new, pad_height), np.mean(im[:,:,2]), dtype=float)
+                tmp_r = np.full((imgwidth_new, pad_height), np.mean(im[:,:,0]))
+                tmp_b = np.full((imgwidth_new, pad_height), np.mean(im[:,:,1]))
+                tmp_g = np.full((imgwidth_new, pad_height), np.mean(im[:,:,2]))
                 tmp = np.stack((tmp_r, tmp_b, tmp_g), axis=2)
                 assert tmp.shape == (imgwidth_new, pad_height, 3), 'height padding not the correct shape'
                 im_padded = np.concatenate((im_padded, tmp), axis=1) ## axis = 1 to concatenate along cols
@@ -99,7 +104,7 @@ def img_crop(im, w, h, aerial_image):
                 ##pdb.set_trace()
         else:
             ## gt images are of size (w,h) no RBG
-            tmp = np.full((imgwidth_new, pad_height), 0, dtype=int)
+            tmp = np.full((imgwidth_new, pad_height), 0)
             assert tmp.shape == (imgwidth_new, pad_height), 'height padding not the correct shape'
             im_padded = np.concatenate((im_padded,tmp), axis=1)
             ##Image.fromarray(img_float_to_uint8(im_padded)).save("padded_gt.png")
@@ -344,18 +349,24 @@ def main(argv=None):  # pylint: disable=unused-argument
     # The variables below hold all the trainable weights. They are passed an
     # initial value which will be assigned when when we call:
     # {tf.initialize_all_variables().run()}
+    conv1_num_of_maps = 32
+    conv1_dim = 5
     conv1_weights = tf.Variable(
-        tf.truncated_normal([5, 5, NUM_CHANNELS, 32],  # 5x5 filter, depth 32.
+        tf.truncated_normal([conv1_dim, conv1_dim, NUM_CHANNELS, conv1_num_of_maps],  # 5x5 filter, depth 32.
                             stddev=0.1,
                             seed=SEED))
     conv1_biases = tf.Variable(tf.zeros([32]))
+    conv2_num_of_maps = 64
+    conv2_dim = 5
     conv2_weights = tf.Variable(
-        tf.truncated_normal([5, 5, 32, 64],
+        tf.truncated_normal([conv2_dim, conv2_dim, conv1_num_of_maps, conv2_num_of_maps],
                             stddev=0.1,
                             seed=SEED))
     conv2_biases = tf.Variable(tf.constant(0.1, shape=[64]))
+    tmp_neuron_num = int(IMG_PATCH_SIZE / 4 * IMG_PATCH_SIZE / 4 * conv2_num_of_maps) ## for IMG_PATCH_SIZE = 64
     fc1_weights = tf.Variable(  # fully connected, depth 512.
-        tf.truncated_normal([int(IMG_PATCH_SIZE / 4 * IMG_PATCH_SIZE / 4 * 64), 512],
+        ##tf.truncated_normal([int(IMG_PATCH_SIZE / 4 * IMG_PATCH_SIZE / 4 * 64), 512],
+        tf.truncated_normal([tmp_neuron_num, 512],
                             stddev=0.1,
                             seed=SEED))
     fc1_biases = tf.Variable(tf.constant(0.1, shape=[512]))
@@ -391,7 +402,7 @@ def main(argv=None):  # pylint: disable=unused-argument
 
     # Get prediction for given input image
     def get_prediction(img):
-        data = np.asarray(img_crop(img, IMG_PATCH_SIZE, IMG_PATCH_SIZE, aerial_image=False))
+        data = np.asarray(img_crop(img, IMG_PATCH_SIZE, IMG_PATCH_SIZE, aerial_image=True))
         data_node = tf.constant(data)
         output = tf.nn.softmax(model(data_node))
         output_prediction = s.run(output)
@@ -464,28 +475,16 @@ def main(argv=None):  # pylint: disable=unused-argument
         # 2D convolution, with 'SAME' padding (i.e. the output feature map has
         # the same size as the input). Note that {strides} is a 4D array whose
         # shape matches the data layout: [image index, y, x, depth].
-        conv = tf.nn.conv2d(data,
-                            conv1_weights,
-                            strides=[1, 1, 1, 1],
-                            padding='SAME')
+        conv = tf.nn.conv2d(data, conv1_weights, strides=[1, 1, 1, 1], padding='SAME')
         # Bias and rectified linear non-linearity.
         relu = tf.nn.relu(tf.nn.bias_add(conv, conv1_biases))
         # Max pooling. The kernel size spec {ksize} also follows the layout of
         # the data. Here we have a pooling window of 2, and a stride of 2.
-        pool = tf.nn.max_pool(relu,
-                              ksize=[1, 2, 2, 1],
-                              strides=[1, 2, 2, 1],
-                              padding='SAME')
+        pool = tf.nn.max_pool(relu, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
 
-        conv2 = tf.nn.conv2d(pool,
-                            conv2_weights,
-                            strides=[1, 1, 1, 1],
-                            padding='SAME')
+        conv2 = tf.nn.conv2d(pool, conv2_weights, strides=[1, 1, 1, 1], padding='SAME')
         relu2 = tf.nn.relu(tf.nn.bias_add(conv2, conv2_biases))
-        pool2 = tf.nn.max_pool(relu2,
-                              ksize=[1, 2, 2, 1],
-                              strides=[1, 2, 2, 1],
-                              padding='SAME')
+        pool2 = tf.nn.max_pool(relu2, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
 
         # Uncomment these lines to check the size of each layer
         print 'data ' + str(data.get_shape())
@@ -493,7 +492,6 @@ def main(argv=None):  # pylint: disable=unused-argument
         print 'relu ' + str(relu.get_shape())
         print 'pool ' + str(pool.get_shape())
         print 'pool2 ' + str(pool2.get_shape())
-
 
         # Reshape the feature map cuboid into a 2D matrix to feed it to the
         # fully connected layers.
@@ -503,13 +501,14 @@ def main(argv=None):  # pylint: disable=unused-argument
             [pool_shape[0], pool_shape[1] * pool_shape[2] * pool_shape[3]])
         # Fully connected layer. Note that the '+' operation automatically
         # broadcasts the biases.
-        pdb.set_trace()
+        ##pdb.set_trace()
         hidden = tf.nn.relu(tf.matmul(reshape, fc1_weights) + fc1_biases)
         # Add a 50% dropout during training only. Dropout also scales
         # activations such that no rescaling is needed at evaluation time.
         #if train:
         #    hidden = tf.nn.dropout(hidden, 0.5, seed=SEED)
         out = tf.matmul(hidden, fc2_weights) + fc2_biases
+        ##out = tf.sigmoid(tf.matmul(hidden, fc2_weights) + fc2_biases)
 
         if train == True:
             summary_id = '_0'

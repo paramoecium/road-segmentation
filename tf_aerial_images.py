@@ -15,6 +15,8 @@ import code
 import tensorflow.python.platform
 import numpy as np
 import tensorflow as tf
+from data_extraction import *
+from helpers import *
 
 NUM_CHANNELS = 3 # RGB images
 PIXEL_DEPTH = 255
@@ -24,7 +26,7 @@ TEST_SIZE = 50
 VALIDATION_SIZE = 10  # Size of the validation set. Not used
 SEED = 66478  # Set to None for random seed.
 BATCH_SIZE = 16 # 64
-NUM_EPOCHS = 5
+NUM_EPOCHS = 1
 RESTORE_MODEL = False # If True, restore existing model instead of training a new one
 RECORDING_STEP = 1000
 ROTATE_IMAGES = False
@@ -39,90 +41,6 @@ tf.app.flags.DEFINE_string('train_dir', '/tmp/mnist',
                            """and checkpoint.""")
 FLAGS = tf.app.flags.FLAGS
 
-def img_crop(im, w, h, aerial_image):
-    """
-    Extracts patches from a given image
-    Args:
-        im: image
-        w: width
-        h: height
-    Returns:
-        list with patches of images
-    """
-    list_patches = []
-    imgwidth = im.shape[0]
-    imgheight = im.shape[1]
-    is_2d = len(im.shape) < 3 ## 3 channels RBG
-    ## creating padding in the image if there is not a whole number of patches which fit on the image
-    ## creating padding for bottom of image
-    rw = imgwidth % w
-    pad_width = w - rw
-    if rw != 0:
-        if aerial_image:
-            if is_2d:
-                ## append means to image channels
-                tmp = np.full((pad_width, imgheight), np.mean(im))
-                ##pdb.set_trace()
-                im_padded = np.concatenate((im,tmp), axis=0)
-            else:
-                ## append mean to width of image
-                tmp_r = np.full((pad_width, imgheight), np.mean(im[:,:,0]))
-                tmp_b = np.full((pad_width, imgheight), np.mean(im[:,:,1]))
-                tmp_g = np.full((pad_width, imgheight), np.mean(im[:,:,2]))
-                tmp = np.stack((tmp_r, tmp_b, tmp_g), axis=2) ## axis=2 creates new dim
-                assert tmp.shape == (pad_width, imgheight, 3), 'width padding not the correct shape'
-                ##pdb.set_trace()
-                im_padded = np.concatenate((im, tmp), axis=0)
-        else:
-            ## gt images are of size (w,h) no RBG
-            tmp = np.full((pad_width, imgheight), 0)
-            ##pdb.set_trace()
-            ##print("tmp shape: {}".format(tmp.shape))
-            ##print("im shape: {}".format(im.shape))
-            im_padded = np.concatenate((im,tmp), axis=0)
-    else:
-        im_padded = im
-
-    ## creating padding for the right of the image
-    imgwidth_new = im_padded.shape[0]
-    rh = imgheight % h
-    pad_height = h - rh
-    if rh != 0:
-        if aerial_image:
-            if is_2d:
-                tmp = np.full((imgwidth_new, pad_height), np.mean(im))
-                im_padded = np.concatenate((im_padded,tmp), axis=1)
-            else:
-                ## append mean to width of image
-                tmp_r = np.full((imgwidth_new, pad_height), np.mean(im[:,:,0]))
-                tmp_b = np.full((imgwidth_new, pad_height), np.mean(im[:,:,1]))
-                tmp_g = np.full((imgwidth_new, pad_height), np.mean(im[:,:,2]))
-                tmp = np.stack((tmp_r, tmp_b, tmp_g), axis=2)
-                assert tmp.shape == (imgwidth_new, pad_height, 3), 'height padding not the correct shape'
-                im_padded = np.concatenate((im_padded, tmp), axis=1) ## axis = 1 to concatenate along cols
-                ##Image.fromarray(img_float_to_uint8(im_padded)).save("padded.png")
-                ##pdb.set_trace()
-        else:
-            ## gt images are of size (w,h) no RBG
-            tmp = np.full((imgwidth_new, pad_height), 0)
-            assert tmp.shape == (imgwidth_new, pad_height), 'height padding not the correct shape'
-            im_padded = np.concatenate((im_padded,tmp), axis=1)
-            ##Image.fromarray(img_float_to_uint8(im_padded)).save("padded_gt.png")
-            ##pdb.set_trace()
-
-    ## overwriting original height
-    imgheight_new = im_padded.shape[1]
-    ##pdb.set_trace()
-    assert imgwidth_new % w == 0 and imgheight_new % h == 0, 'New img dimensions are not wholly covered by patches'
-    for i in range(0,imgheight_new,h):
-        for j in range(0,imgwidth_new,w):
-            if is_2d:
-                im_patch = im_padded[j:j+w, i:i+h]
-            else:
-                im_patch = im_padded[j:j+w, i:i+h, :]
-            list_patches.append(im_patch)
-    return list_patches
-
 def extract_data(filename, num_images):
     """Extract the images into a 4D tensor [image index, y, x, channels].
     Values are rescaled from [0, 255] down to [-0.5, 0.5].
@@ -134,14 +52,12 @@ def extract_data(filename, num_images):
         if os.path.isfile(image_filename):
             print ('Loading ' + image_filename)
             img = mpimg.imread(image_filename)
-            if ROTATE_IMAGES:
-                pass
             imgs.append(img)
+            if ROTATE_IMAGES:
+                augment_image(img, imgs, 3)
         else:
             print ('File ' + image_filename + ' does not exist')
 
-    if ROTATE_IMAGES:
-        imgs
     num_images = len(imgs)
     IMG_WIDTH = imgs[0].shape[0]
     IMG_HEIGHT = imgs[0].shape[1]
@@ -181,6 +97,8 @@ def extract_labels(filename, num_images):
             print ('Loading ' + image_filename)
             img = mpimg.imread(image_filename)
             gt_imgs.append(img)
+            if ROTATE_IMAGES:
+                augment_image(img, gt_imgs, 3)
         else:
             print ('File ' + image_filename + ' does not exist')
 
@@ -193,57 +111,6 @@ def extract_labels(filename, num_images):
 
     # Convert to dense 1-hot representation.
     return labels.astype(np.float32)
-
-
-def error_rate(predictions, labels):
-    """Return the error rate based on dense predictions and 1-hot labels."""
-    return 100.0 - (100.0 * np.sum(np.argmax(predictions, 1) == np.argmax(labels, 1)) / predictions.shape[0])
-
-# Write predictions from neural network to a file
-def write_predictions_to_file(predictions, labels, filename):
-    max_labels = np.argmax(labels, 1)
-    max_predictions = np.argmax(predictions, 1)
-    file = open(filename, "w")
-    n = predictions.shape[0]
-    for i in range(0, n):
-        file.write(max_labels(i) + ' ' + max_predictions(i))
-    file.close()
-
-# Print predictions from neural network
-def print_predictions(predictions, labels):
-    max_labels = np.argmax(labels, 1)
-    max_predictions = np.argmax(predictions, 1)
-    print (str(max_labels) + ' ' + str(max_predictions))
-
-# Convert array of labels to an image
-def label_to_img(imgwidth, imgheight, w, h, labels):
-    """
-    Args:
-        imgwidth: the width of the image
-        imgheight: the height of the image
-        w: the width of the patch of image
-        h: the height of the patch of the image
-        labels: tensor the predictions
-    Returns:
-        numpy array of the size [imgwidth, imgheight] with 0s and 1s indicating not road not road
-        respectively
-    """
-    array_labels = np.zeros([imgwidth, imgheight])
-    idx = 0
-    for i in range(0,imgheight,h):
-        for j in range(0,imgwidth,w):
-            if labels[idx][0] > 0.5:
-                l = 1
-            else:
-                l = 0
-            array_labels[j:j+w, i:i+h] = l
-            idx = idx + 1
-    return array_labels
-
-def img_float_to_uint8(img):
-    rimg = img - np.min(img)
-    rimg = (rimg / np.max(rimg) * PIXEL_DEPTH).round().astype(np.uint8)
-    return rimg
 
 def data2img(data):
     """

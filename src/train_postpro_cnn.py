@@ -290,7 +290,7 @@ def train_and_apply_model():
     ##################
     logits = model(train_data_node, True)
     loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits, train_labels_node))
-    tf.scalar_summary('loss', loss)
+    tf.summary.scalar('loss', loss)
 
     cumulative_loss = tf.Variable(1.0)
     loss_window = np.zeros(LOSS_WINDOW_SIZE)
@@ -305,14 +305,14 @@ def train_and_apply_model():
 
     ### IN SAMPLE ERROR ###
     error_insample_tensor = tf.Variable(0)
-    tf.scalar_summary('error_insample_smoothed', error_insample_tensor)
+    tf.summary.scalar('error_insample_smoothed', error_insample_tensor)
 
     insample_error_window = np.zeros(LOSS_WINDOW_SIZE)
     index_insample_error_window = 0
 
     ### VALIDATION ERROR ###
     error_validation_tensor = tf.Variable(0)
-    tf.scalar_summary('error_validation', error_validation_tensor)
+    tf.summary.scalar('error_validation', error_validation_tensor)
 
     # Create the validation model here to prevent recreating large constant nodes in graph later
     if VALIDATE:

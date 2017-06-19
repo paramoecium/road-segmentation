@@ -504,21 +504,21 @@ def main(argv=None):  # pylint: disable=unused-argument
             return V
 
         if train:
-            tf.image_summary('summary_data', get_image_summary(data))
-            tf.image_summary('summary_conv1', get_image_summary(conv1))
-            tf.image_summary('summary_pool1', get_image_summary(pool1))
-            tf.image_summary('summary_conv2', get_image_summary(conv2))
-            tf.image_summary('summary_pool2', get_image_summary(pool2))
-            tf.image_summary('summary_conv3', get_image_summary(conv3))
-            tf.image_summary('summary_pool3', get_image_summary(pool3))
-            tf.image_summary('summary_conv4', get_image_summary(conv4))
-            tf.image_summary('summary_pool4', get_image_summary(pool4))
-            tf.histogram_summary('weights_conv1', conv1_weights)
-            tf.histogram_summary('weights_conv2', conv2_weights)
-            tf.histogram_summary('weights_conv3', conv3_weights)
-            tf.histogram_summary('weights_conv4', conv4_weights)
-            tf.histogram_summary('weights_FC1', fc1_weights)
-            tf.histogram_summary('weights_FC2', fc2_weights)
+            tf.summary.image('summary_data', get_image_summary(data))
+            tf.summary.image('summary_conv1', get_image_summary(conv1))
+            tf.summary.image('summary_pool1', get_image_summary(pool1))
+            tf.summary.image('summary_conv2', get_image_summary(conv2))
+            tf.summary.image('summary_pool2', get_image_summary(pool2))
+            tf.summary.image('summary_conv3', get_image_summary(conv3))
+            tf.summary.image('summary_pool3', get_image_summary(pool3))
+            tf.summary.image('summary_conv4', get_image_summary(conv4))
+            tf.summary.image('summary_pool4', get_image_summary(pool4))
+            tf.summary.histogram('weights_conv1', conv1_weights)
+            tf.summary.histogram('weights_conv2', conv2_weights)
+            tf.summary.histogram('weights_conv3', conv3_weights)
+            tf.summary.histogram('weights_conv4', conv4_weights)
+            tf.summary.histogram('weights_FC1', fc1_weights)
+            tf.summary.histogram('weights_FC2', fc2_weights)
 
         return out
 
@@ -528,14 +528,14 @@ def main(argv=None):  # pylint: disable=unused-argument
     ### SETUP LOSS ###
     ##################
     logits = model(train_data_node, True)
-    loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits, train_labels_node))
-    tf.scalar_summary('loss', loss)
+    loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=train_labels_node))
+    tf.summary.scalar('loss', loss)
 
     cumulative_loss = tf.Variable(1.0)
     loss_window = np.zeros(LOSS_WINDOW_SIZE)
     index_loss_window = 0
 
-    tf.scalar_summary('loss_smoothed', cumulative_loss)
+    tf.summary.scalar('loss_smoothed', cumulative_loss)
     #########################
     ### L2 REGULARIZATION ###
     #########################
@@ -545,14 +545,14 @@ def main(argv=None):  # pylint: disable=unused-argument
 
     ### IN SAMPLE ERROR ###
     error_insample_tensor = tf.Variable(0)
-    tf.scalar_summary('error_insample_smoothed', error_insample_tensor)
+    tf.summary.scalar('error_insample_smoothed', error_insample_tensor)
 
     insample_error_window = np.zeros(LOSS_WINDOW_SIZE)
     index_insample_error_window = 0
 
     ### VALIDATION ERROR ###
     error_validation_tensor = tf.Variable(0)
-    tf.scalar_summary('error_validation', error_validation_tensor)
+    tf.summary.scalar('error_validation', error_validation_tensor)
 
     # Create the validation model here to prevent recreating large constant nodes in graph later
     if VALIDATE:
@@ -569,7 +569,7 @@ def main(argv=None):  # pylint: disable=unused-argument
     for i in range(0, len(all_grads_node)):
         norm_grad_i = tf.global_norm([all_grads_node[i]])
         all_grad_norms_node.append(norm_grad_i)
-        tf.scalar_summary(all_params_names[i], norm_grad_i)
+        tf.summary.scalar(all_params_names[i], norm_grad_i)
 
     #######################
     ### OPTIMIZER SETUP ###
@@ -583,7 +583,7 @@ def main(argv=None):  # pylint: disable=unused-argument
     #     DECAY_RATE,          # Decay rate.
     #     staircase=True)
 
-    tf.scalar_summary('learning_rate', learning_rate)
+    tf.summary.scalar('learning_rate', learning_rate)
 
     # optimizer = tf.train.MomentumOptimizer(learning_rate, 0.9).minimize(loss, global_step=batch)
     optimizer = tf.train.AdamOptimizer(learning_rate, epsilon=0.1).minimize(loss, global_step=batch)
@@ -605,8 +605,8 @@ def main(argv=None):  # pylint: disable=unused-argument
             tf.initialize_all_variables().run()
 
             # Build the summary operation based on the TF collection of Summaries.
-            summary_op = tf.merge_all_summaries()
-            summary_writer = tf.train.SummaryWriter(FLAGS.train_dir, graph=s.graph)
+            summary_op = tf.summary.merge_all()
+            summary_writer = tf.summary.FileWriter(FLAGS.train_dir, graph=s.graph)
             print("### MODEL INITIALIZED ###")
             print("### TRAINING STARTED ###")
 

@@ -599,7 +599,7 @@ def main(argv=None):  # pylint: disable=unused-argument
     #######################
     with tf.Session() as s:
         if RESTORE_MODEL:
-            saver.restore(s, FLAGS.train_dir + "/model.ckpt")
+            saver.restore(s, FLAGS.train_dir + "model.ckpt")
             print("### MODEL RESTORED ###")
         else:
             tf.initialize_all_variables().run()

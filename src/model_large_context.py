@@ -46,7 +46,7 @@ LOSS_WINDOW_SIZE = 10
 
 IMG_PATCHES_SAVE = False
 IMG_PATCHES_RESTORE = False
-TRAINING_SIZE = 100
+TRAINING_SIZE = const.TRAINING_SIZE
 
 VALIDATION_SIZE = 10000  # Size of the validation set in # of patches
 VALIDATE = False
@@ -56,7 +56,7 @@ VISUALIZE_PREDICTION_ON_TRAINING_SET = True
 VISUALIZE_NUM = -1  # -1 means visualize all
 
 RUN_ON_TEST_SET = True
-TEST_SIZE = 50
+TEST_SIZE = const.TEST_SIZE
 
 tf.app.flags.DEFINE_string("train_dir", ROOT_DIR + "tmp/", """Directory where to write event logs and checkpoint.""")
 

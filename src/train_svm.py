@@ -26,7 +26,7 @@ def trainClassifier():
     train_data_filename = "../results/CNN_Output/training/raw/"
     train_labels_filename = "../data/training/groundtruth/"
     
-    num_images = 100
+    num_images = const.TRAINING_SIZE
     
     # ground truth label images and CNN output
     labelsTrue = dlm.extract_label_images(train_labels_filename, num_images, const.POSTPRO_PATCH_SIZE, const.POSTPRO_PATCH_SIZE)

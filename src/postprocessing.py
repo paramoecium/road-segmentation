@@ -110,7 +110,7 @@ def generate_output():
     prob_fn = "../results/CNN_Output/test/high_res_raw/"  
     input_filename = "raw_test_%d_pixels"
     output_dir = postpro_fn + "/test/"
-    num_images = 50
+    num_images = const.TEST_SIZE
     
     # test set patches    
 #    prob_fn = "../results/CNN_Output/test/raw/"  

@@ -1,8 +1,8 @@
 # CONSTANTS THAT ARE COMMON TO MULTIPLE SOURCE FILES
 
 # Number of input and test images
-TRAINING_SIZE = 1
-TEST_SIZE = 1
+TRAINING_SIZE = 100
+TEST_SIZE = 50
 
 # Dimensions of input images
 IMG_WIDTH = 200

@@ -33,10 +33,10 @@ def corrupt(data, nu, type='masking_noise'):
     Corrupts the data for inputing into the de-noising autoencoder
 
     Args:
-        data: numpy array of size (num_points, 1, patch_size, patch_size)
+        data: numpy array of size (num_points, 1, img_size, img_size)
         nu: corruption level
     Returns:
-        numpy array of size (num_points, 1, patch_size, patch_size)
+        numpy array of size (num_points, 1, img_size, img_size)
     """
     if type == 'masking_noise':
         img_max = np.ones(data.shape, dtype=bool)
@@ -85,8 +85,8 @@ def mainFunc(argv):
     targets = dlm.extract_data(train_data_filename,
                                num_images=conf.train_size, ## TODO: change to 100 for full run
                                num_of_transformations=0,
-                               patch_size=conf.train_image_size,
-                               patch_stride=conf.train_image_size,
+                               patch_size=conf.image_size,
+                               patch_stride=conf.image_size,
                                border_size=0,
                                zero_center=False)
 
@@ -98,6 +98,9 @@ def mainFunc(argv):
                                           order=0, preserve_range=True)
 
     print("New shape of each image: {}".format(targets_patch_lvl.shape)) ## (5, 50, 50)
+
+    print("Deleting original data to free space")
+    del targets
 
     # print("corrupting the ground truth labels")
     # train = corrupt(targets_patch_lvl, 0.05)
@@ -146,20 +149,18 @@ def mainFunc(argv):
             train = corrupt(targets_patch_lvl,
                             float(np.random.choice(a = [0.01, 0.05], size=1, p=[0.75, 0.25])))
 
-
-
             perm_idx = np.random.permutation(conf.train_size)
             batch_index = 1
             for step in range(int(conf.train_size / conf.batch_size)):
-                offset = (batch_index*conf.batch_size) % (train_size - conf.batch_size)
+                offset = (batch_index*conf.batch_size) % (conf.train_size - conf.batch_size)
                 batch_indices = perm_idx[offset:(offset + conf.batch_size)]
 
-                batch_inputs = train[batch_indices,:,:].reshape((batch_size, conf.train_image_size**2))
-                batch_targets = targets[batch_indices,:,:,:].reshape((batch_size, conf.train_image_size**2))
+                batch_inputs = train[batch_indices,:,:].reshape((conf.batch_size, conf.train_image_size**2))
+                batch_targets = targets_patch_lvl[batch_indices,:,:].reshape((conf.batch_size, conf.train_image_size**2))
 
                 print("shape of batch inputs: {0} and outputs: {1}".format(batch_inputs.shape, batch_targets.shape))
 
-                pdb.set_trace()
+                ##pdb.set_trace()
                 feed_dict = model.make_inputs(batch_inputs, batch_targets)
                 if global_step % conf.validation_summary_frequency == 0:
                     pass
@@ -178,18 +179,17 @@ def mainFunc(argv):
         print("Visualising encoder results and true images from eval set")
         # Applying encode and decode over test set
         # One batch for eval
-        d = train[batch_indices,:,:].reshape((batch_size, conf.patch_size**2))
-        t = targets[batch_indices,:,:,:].reshape((batch_size, conf.patch_size**2))
+        d = train[batch_indices,:,:].reshape((conf.batch_size, conf.train_image_size**2))
+        t = targets_patch_lvl[batch_indices,:,:].reshape((conf.batch_size, conf.train_image_size**2))
         feed_dict = model.make_inputs(d, t)
         encode_decode = sess.run(model.y_pred, feed_dict=feed_dict)
         print("shape of predictions: {}".format(encode_decode.shape))
         # Compare original images with their reconstructions
         f, a = plt.subplots(2, conf.examples_to_show, figsize=(conf.examples_to_show, 4))
         for i in range(conf.examples_to_show):
-            im1 =a[0][i].imshow(np.reshape(targets[i,:,:,:], (conf.train_image_size, conf.train_image_size)))
-            im2 = a[1][i].imshow(np.reshape(encode_decode[i].reshape(conf.train_image_size, conf.train_image_size), (conf.train_image_size, conf.train_image_size))) ## order - 'F'?
-        plt.colorbar(im1)
-        plt.colorbar(im2)
+            a[0][i].imshow(np.reshape(targets_patch_lvl[i,:,:], (conf.train_image_size, conf.train_image_size)))
+            im = a[1][i].imshow(np.reshape(encode_decode[i].reshape(conf.train_image_size, conf.train_image_size), (conf.train_image_size, conf.train_image_size))) ## order - 'F'?
+        plt.colorbar(im)
         plt.savefig('./autoencoder_eval.png')
 
 if __name__ == "__main__":

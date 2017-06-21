@@ -9,12 +9,12 @@ import constants as const
 
 
 def zero_center(patches):
-    """ Zero centers patch data and caches their mean value to disk """    
+    """ Zero centers patch data and caches their mean value to disk """
 
     if os.path.isfile(const.PATCHES_MEAN_PATH + ".npy"):
-        mean_patch = np.load(const.PATCHES_MEAN_PATH + ".npy")  
+        mean_patch = np.load(const.PATCHES_MEAN_PATH + ".npy")
     else:
-        if not os.path.isdir(const.OBJECTS_PATH):            
+        if not os.path.isdir(const.OBJECTS_PATH):
             os.makedirs(const.OBJECTS_PATH)
         print("Computing mean patch")
         mean_patch = np.mean(patches, axis=0)
@@ -23,13 +23,13 @@ def zero_center(patches):
         print("Mean patch saved to the disk.")
 
     return patches - mean_patch
-    
+
 
 def augment_image(img, out_ls, num_of_transformations):
-    """ Augments the input image img by a number of transformations (rotations by 90° and flips). 
+    """ Augments the input image img by a number of transformations (rotations by 90deg and flips). 
         out_ls --- list of output images
         num_of_transformations --- number of transformations to compute """
-        
+
     img2 = np.fliplr(img)
 
     out_ls.append(img)
@@ -43,7 +43,7 @@ def augment_image(img, out_ls, num_of_transformations):
     if num_of_transformations > 2:
         tmp = np.rot90(np.rot90(np.rot90(img)))
         out_ls.append(tmp)
-    
+
     if num_of_transformations > 3:
         tmp = np.rot90(img2)
         out_ls.append(tmp)
@@ -55,11 +55,11 @@ def augment_image(img, out_ls, num_of_transformations):
         out_ls.append(tmp)
     if num_of_transformations > 6:
         out_ls.append(img2)
-        
+
 
 def mirror_border(img, border_size):
     """ Pads an input image img with a border of size border_size using a mirror boundary condition """
-    
+
     if len(img.shape) < 3:
         # Binary image
         res_img = np.zeros((img.shape[0] + 2 * border_size, img.shape[1] + 2 * border_size))
@@ -80,17 +80,17 @@ def mirror_border(img, border_size):
     res_img[res_img.shape[0] - border_size : res_img.shape[0], 0 : border_size] = \
         np.fliplr(np.flipud(img[img.shape[0] - border_size : img.shape[0], 0 : border_size]))
     res_img[res_img.shape[0] - border_size : res_img.shape[0], res_img.shape[1] - border_size : res_img.shape[1]] = \
-        np.fliplr(np.flipud(img[img.shape[0] - border_size : img.shape[0], img.shape[1] - border_size : img.shape[1]])) 
+        np.fliplr(np.flipud(img[img.shape[0] - border_size : img.shape[0], img.shape[1] - border_size : img.shape[1]]))
 
     return res_img
 
 
 def img_crop(im, patch_size, border_size, stride, num_of_transformations):
     """ Extracts patches of size patch_size and stride stride from an image img """
-    
-    context_size = patch_size + 2 * border_size    
+
+    context_size = patch_size + 2 * border_size
     im = mirror_border(im, border_size)
-    
+
     list_patches = []
     imgwidth = im.shape[0]
     imgheight = im.shape[1]
@@ -108,15 +108,15 @@ def img_crop(im, patch_size, border_size, stride, num_of_transformations):
             augment_image(im_patch, list_patches, num_of_transformations)
 
     return list_patches
-    
+
 
 def input_img_crop(im, patch_size, border_size, stride, num_of_transformations):
     """ Crops an input image. Direct alias of img_crop """
-    
+
     return img_crop(im, patch_size, border_size, stride, num_of_transformations)
-    
+
 
 def label_img_crop(im, patch_size, stride, num_of_transformations):
     """ Crops a label image into patches """
-    
+
     return img_crop(im, patch_size, 0, stride, num_of_transformations)

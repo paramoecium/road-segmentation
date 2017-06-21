@@ -5,6 +5,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 ##from tqdm import tqdm
 import os.path
+import time
 import sys
 import getopt
 import pdb
@@ -123,6 +124,7 @@ def mainFunc(argv):
 
     print("Starting TensorFlow session")
     with tf.Session(config=configProto) as sess:
+        start = time.time()
         global_step = 1
 
         saver = tf.train.Saver(max_to_keep=3, keep_checkpoint_every_n_hours=2)
@@ -144,6 +146,8 @@ def mainFunc(argv):
         for i in range(conf.num_epochs):
             print("Training epoch {}".format(i))
             logging.info("Training epoch {}".format(i))
+            print("Time elapsed:    %.3fs" % (time.time() - start))
+            logging.info("Time elapsed:    %.3fs" % (time.time() - start))
 
             print("corrupting the ground truth labels")
             train = corrupt(targets_patch_lvl,

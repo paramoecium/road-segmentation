@@ -170,16 +170,14 @@ def main(argv=None):  # pylint: disable=unused-argument
             print("Skipping balancing - balanced data already loaded from the disk.")
         else:
             print("Balancing training data.")
-            min_c = min(c0, c1)
-            idx0 = [i for i, j in enumerate(train_labels) if j[0] == 1]
-            idx1 = [i for i, j in enumerate(train_labels) if j[1] == 1]
-            new_indices = idx0[0:min_c] + idx1[0:min_c]
+            # We apply median frequency class balancing as in arXiv:1411.4734v4
+            c0freq = float(c0) / (c0 + c1)
+            c1freq = float(c1) / (c0 + c1)
+            medianfreq = (c0freq + c1freq) / 2
+            balancing_coefficients = np.array([medianfreq / c0freq, medianfreq / c1freq])
 
-            train_data = train_data[new_indices, :, :, :]
-            train_labels = train_labels[new_indices]
             train_size = train_labels.shape[0]
 
-            num_of_datapoints_per_class()
             if IMG_PATCHES_SAVE:
                 np.save(patches_balanced_filename, train_data)
                 np.save(labels_balanced_filename, train_labels)
@@ -450,6 +448,13 @@ def main(argv=None):  # pylint: disable=unused-argument
         print("--------------------")
         return err
 
+    def weighted_loss(logits, labels, num_classes, coefficients, head=None):
+        with tf.name_scope('loss_1'):
+            epsilon = tf.constant(value=1e-10)
+            logits = logits + epsilon
+            softmax = tf.nn.softmax(logits)
+            cross_entropy = -tf.reduce_sum(tf.multiply(labels * tf.log(softmax + epsilon), coefficients), reduction_indices=[1])
+            return cross_entropy
     def model(data, train=False):
         """Define the CNN."""
         # CONV. LAYER 1
@@ -528,7 +533,8 @@ def main(argv=None):  # pylint: disable=unused-argument
     ### SETUP LOSS ###
     ##################
     logits = model(train_data_node, True)
-    loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=train_labels_node))
+    losses = tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=train_labels_node)
+    loss = tf.reduce_mean(losses)
     tf.summary.scalar('loss', loss)
 
     cumulative_loss = tf.Variable(1.0)

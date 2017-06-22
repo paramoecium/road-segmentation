@@ -152,8 +152,8 @@ class ae():
             self.layer_7 = tf.nn.dropout(tf.nn.relu(tf.add(tf.matmul(self.layer_6, self.weights['decoder_h3']),
                                                     self.biases['decoder_b3'])), keep_prob=self.dropout)
 
-            self.layer_8 = tf.nn.dropout(tf.nn.relu(tf.add(tf.matmul(self.layer_7, self.weights['decoder_h4']),
-                                                     self.biases['decoder_b4'])), keep_prob=self.dropout)
+            self.layer_8 = tf.nn.dropout(tf.sigmoid(tf.add(tf.matmul(self.layer_7, self.weights['decoder_h4']),
+                                                    self.biases['decoder_b4'])), keep_prob=self.dropout)
 
 
     def _init_optimizer(self):

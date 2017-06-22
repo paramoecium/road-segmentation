@@ -164,7 +164,7 @@ def mainFunc(argv):
                 batch_inputs = train[batch_indices,:,:].reshape((conf.batch_size, conf.train_image_size**2))
                 batch_targets = targets_patch_lvl[batch_indices,:,:].reshape((conf.batch_size, conf.train_image_size**2))
 
-                print("shape of batch inputs: {0} and outputs: {1}".format(batch_inputs.shape, batch_targets.shape))
+                ##print("shape of batch inputs: {0} and outputs: {1}".format(batch_inputs.shape, batch_targets.shape))
 
                 ##pdb.set_trace()
                 feed_dict = model.make_inputs(batch_inputs, batch_targets)
@@ -193,8 +193,8 @@ def mainFunc(argv):
         # Compare original images with their reconstructions
         f, a = plt.subplots(3, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
         for i in range(conf.examples_to_show):
-            a[0][i].imshow(np.reshape(targets_patch_lvl[i,:,:], (conf.train_image_size, conf.train_image_size)))
-            a[1][i].imshow(np.reshape(train[i,:,:], (conf.train_image_size, conf.train_image_size)))
+            a[0][i].imshow(np.reshape(t[i,:,:], (conf.train_image_size, conf.train_image_size)))
+            a[1][i].imshow(np.reshape(d[i,:,:], (conf.train_image_size, conf.train_image_size)))
             im = a[2][i].imshow(np.reshape(encode_decode[i].reshape(conf.train_image_size, conf.train_image_size), (conf.train_image_size, conf.train_image_size))) ## order - 'F'?
         plt.colorbar(im)
         plt.savefig('./autoencoder_eval.png')

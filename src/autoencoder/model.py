@@ -161,7 +161,7 @@ class ae():
         self.y_pred = self.layer_8
         # Targets (Labels) are the input data.
         self.loss = tf.reduce_mean(tf.pow(self.y - self.y_pred, 2))
-        self.optimizer = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss)
+        self.optimizer = tf.train.AdamOptimizer().minimize(self.loss)
 
     def _init_summary(self):
         loss = tf.summary.scalar("loss", self.loss)

@@ -120,6 +120,7 @@ def mainFunc(argv):
     print("H2 size: {}".format(int(conf.train_image_size*conf.train_image_size/2/2)))
     print("H3 size: {}".format(int(conf.train_image_size*conf.train_image_size/2/2/2)))
     print("H4 size: {}".format(int(conf.train_image_size*conf.train_image_size/2/2/2/2)))
+
     model = ae(n_input=int(conf.train_image_size*conf.train_image_size),
                n_hidden_1=int(conf.train_image_size*conf.train_image_size/2),
                n_hidden_2=int(conf.train_image_size*conf.train_image_size/2/2),
@@ -151,13 +152,12 @@ def mainFunc(argv):
         print("Starting training")
         for i in range(conf.num_epochs):
             print("Training epoch {}".format(i))
-            logging.info("Training epoch {}".format(i))
+            #logging.info("Training epoch {}".format(i))
             print("Time elapsed:    %.3fs" % (time.time() - start))
-            logging.info("Time elapsed:    %.3fs" % (time.time() - start))
+            #logging.info("Time elapsed:    %.3fs" % (time.time() - start))
 
             print("corrupting the ground truth labels")
-            train = corrupt(targets_patch_lvl,
-                            float(np.random.choice(a = [0.01, 0.05], size=1, p=[0.75, 0.25])))
+            train = corrupt(targets_patch_lvl, 0.01)
 
             perm_idx = np.random.permutation(conf.train_size)
             batch_index = 1
@@ -195,13 +195,14 @@ def mainFunc(argv):
         encode_decode = sess.run(model.y_pred, feed_dict=feed_dict)
         print("shape of predictions: {}".format(encode_decode.shape))
         # Compare original images with their reconstructions
-        f, a = plt.subplots(2, conf.examples_to_show, figsize=(conf.examples_to_show, 4))
+        f, a = plt.subplots(3, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
         for i in range(conf.examples_to_show):
             a[0][i].imshow(np.reshape(targets_patch_lvl[i,:,:], (conf.train_image_size, conf.train_image_size)))
-            im = a[1][i].imshow(np.reshape(encode_decode[i].reshape(conf.train_image_size, conf.train_image_size), (conf.train_image_size, conf.train_image_size))) ## order - 'F'?
+            a[1][i].imshow(np.reshape(train[i,:,:], (conf.train_image_size, conf.train_image_size)))
+            im = a[2][i].imshow(np.reshape(encode_decode[i].reshape(conf.train_image_size, conf.train_image_size), (conf.train_image_size, conf.train_image_size))) ## order - 'F'?
         plt.colorbar(im)
         plt.savefig('./autoencoder_eval.png')
 
 if __name__ == "__main__":
-    logging.basicConfig(filename='autoencoder.log', level=logging.DEBUG)
+    #logging.basicConfig(filename='autoencoder.log', level=logging.DEBUG)
     mainFunc(sys.argv[1:])

@@ -86,7 +86,7 @@ def mainFunc(argv):
     train_data_filename = ROOT_DIR + "data/training/groundtruth/"
     targets = dlm.extract_data(train_data_filename,
                                num_images=conf.train_size, ## TODO: change to 100 for full run
-                               num_of_transformations=1,
+                               num_of_transformations=0,
                                patch_size=conf.image_size,
                                patch_stride=conf.image_size,
                                border_size=0,
@@ -116,15 +116,15 @@ def mainFunc(argv):
 
     print("Initializing model")
     print("Input size: {}".format(int(conf.train_image_size*conf.train_image_size)))
-    print("H1 size: {}".format(int(conf.train_image_size*conf.train_image_size/2)))
-    print("H2 size: {}".format(int(conf.train_image_size*conf.train_image_size/2/2)))
-    print("H3 size: {}".format(int(conf.train_image_size*conf.train_image_size/2/2/2)))
+    print("H1 size: {}".format(int(conf.train_image_size*conf.train_image_size/3)))
+    print("H2 size: {}".format(int(conf.train_image_size*conf.train_image_size/3/3)))
+    print("H3 size: {}".format(int(conf.train_image_size*conf.train_image_size/3/3/3)))
     ##print("H4 size: {}".format(int(conf.train_image_size*conf.train_image_size/2/2/2/2)))
 
     model = ae(n_input=int(conf.train_image_size*conf.train_image_size),
-               n_hidden_1=int(conf.train_image_size*conf.train_image_size/2),
-               n_hidden_2=int(conf.train_image_size*conf.train_image_size/2/2),
-               n_hidden_3=int(conf.train_image_size*conf.train_image_size/2/2/2),
+               n_hidden_1=int(conf.train_image_size*conf.train_image_size/3),
+               n_hidden_2=int(conf.train_image_size*conf.train_image_size/3/3),
+               n_hidden_3=int(conf.train_image_size*conf.train_image_size/3/3/3),
                learning_rate=conf.learning_rate,
                dropout=conf.dropout_train)
 

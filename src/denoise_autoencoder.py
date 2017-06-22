@@ -105,7 +105,7 @@ def mainFunc(argv):
     del targets
 
     print("corrupting the ground truth labels")
-    train = corrupt(targets_patch_lvl, 0.01)
+    train = corrupt(targets_patch_lvl, conf.corruption)
 
     # f, a = plt.subplots(nrows=2, ncols=4, figsize=(4, 4))
     # for i in range(4):
@@ -199,7 +199,7 @@ def mainFunc(argv):
             a[1][i].imshow(np.reshape(targets_eval[i,:,:], (conf.train_image_size, conf.train_image_size)))
             im = a[2][i].imshow(np.reshape(encode_decode[i].reshape(conf.train_image_size, conf.train_image_size), (conf.train_image_size, conf.train_image_size))) ## order - 'F'?
         plt.colorbar(im)
-        plt.savefig('./autoencoder_eval.png')
+        plt.savefig('./autoencoder_eval_{}.png'.format(tag))
 
 if __name__ == "__main__":
     #logging.basicConfig(filename='autoencoder.log', level=logging.DEBUG)

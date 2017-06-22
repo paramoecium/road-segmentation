@@ -11,4 +11,5 @@ class Config():
     train_size = 100
     dropout_train = 1.0
     learning_rate = 0.005
-    ae_step = 9
+    ae_step = 7
+    corruption = 0.05

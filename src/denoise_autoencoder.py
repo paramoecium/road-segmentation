@@ -155,7 +155,7 @@ def mainFunc(argv):
                 #logging.info("Time elapsed:    %.3fs" % (time.time() - start))
 
             ## corrupting the ground truth labels
-            train = corrupt(targets_patch_lvl, conf.corruption)
+            train = corrupt(targets_patch_lvl, float(np.random.choice(a = [0.01, 0.03], size=1, p=[0.5, 0.5])))
 
             perm_idx = np.random.permutation(conf.train_size)
             batch_index = 1

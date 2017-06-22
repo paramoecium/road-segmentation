@@ -12,7 +12,6 @@ class ae():
                  n_hidden_1,
                  n_hidden_2,
                  n_hidden_3,
-                 n_hidden_4,
                  learning_rate,
                  dropout=1.0):
 

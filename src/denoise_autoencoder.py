@@ -104,9 +104,6 @@ def mainFunc(argv):
     print("Deleting original data to free space")
     del targets
 
-    print("corrupting the ground truth labels")
-    train = corrupt(targets_patch_lvl, conf.corruption)
-
     # f, a = plt.subplots(nrows=2, ncols=4, figsize=(4, 4))
     # for i in range(4):
     #     a[0][i].imshow(np.reshape(targets[i,:,:,:], (targets.shape[2], targets.shape[3])), vmin=0, vmax=1)
@@ -155,6 +152,9 @@ def mainFunc(argv):
                 #logging.info("Training epoch {}".format(i))
                 print("Time elapsed:    %.3fs" % (time.time() - start))
                 #logging.info("Time elapsed:    %.3fs" % (time.time() - start))
+
+            ## corrupting the ground truth labels
+            train = corrupt(targets_patch_lvl, conf.corruption)
 
             perm_idx = np.random.permutation(conf.train_size)
             batch_index = 1

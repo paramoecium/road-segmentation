@@ -116,12 +116,14 @@ def mainFunc(argv):
     print("H1 size: {}".format(int(conf.train_image_size*conf.train_image_size/conf.ae_step)))
     print("H2 size: {}".format(int(conf.train_image_size*conf.train_image_size/conf.ae_step/conf.ae_step)))
     print("H3 size: {}".format(int(conf.train_image_size*conf.train_image_size/conf.ae_step/conf.ae_step/conf.ae_step)))
+    print("H3 size: {}".format(int(conf.train_image_size*conf.train_image_size/conf.ae_step/conf.ae_step/conf.ae_step/conf.ae_step)))
     ##print("H4 size: {}".format(int(conf.train_image_size*conf.train_image_size/2/2/2/2)))
 
     model = ae(n_input=int(conf.train_image_size*conf.train_image_size),
                n_hidden_1=int(conf.train_image_size*conf.train_image_size/conf.ae_step),
                n_hidden_2=int(conf.train_image_size*conf.train_image_size/conf.ae_step/conf.ae_step),
                n_hidden_3=int(conf.train_image_size*conf.train_image_size/conf.ae_step/conf.ae_step/conf.ae_step),
+               n_hidden_4=int(conf.train_image_size*conf.train_image_size/conf.ae_step/conf.ae_step/conf.ae_step/conf.ae_step),
                learning_rate=conf.learning_rate,
                dropout=conf.dropout_train)
 

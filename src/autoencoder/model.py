@@ -12,6 +12,7 @@ class ae():
                  n_hidden_1,
                  n_hidden_2,
                  n_hidden_3,
+                 n_hidden_4,
                  learning_rate,
                  dropout=1.0):
 
@@ -19,6 +20,7 @@ class ae():
         self.n_hidden_1 = n_hidden_1
         self.n_hidden_2 = n_hidden_2
         self.n_hidden_3 = n_hidden_3
+        self.n_hidden_4 = n_hidden_4
         self.n_input = n_input
 
         self.dropout = dropout
@@ -67,15 +69,23 @@ class ae():
                                           shape=[self.n_hidden_2, self.n_hidden_3],
                                           initializer=initializer,
                                           dtype=tf.float32),
+            'encoder_h4': tf.get_variable(name="encoder_w_h4",
+                                          shape=[self.n_hidden_3, self.n_hidden_4],
+                                          initializer=initializer,
+                                          dtype=tf.float32),
             'decoder_h1': tf.get_variable(name="decoder_w_h1",
-                                          shape=[self.n_hidden_3, self.n_hidden_2],
+                                          shape=[self.n_hidden_4, self.n_hidden_3],
                                           initializer=initializer,
                                           dtype=tf.float32),
             'decoder_h2': tf.get_variable(name="decoder_w_h2",
-                                          shape=[self.n_hidden_2, self.n_hidden_1],
+                                          shape=[self.n_hidden_3, self.n_hidden_2],
                                           initializer=initializer,
                                           dtype=tf.float32),
             'decoder_h3': tf.get_variable(name="decoder_w_h3",
+                                          shape=[self.n_hidden_2, self.n_hidden_1],
+                                          initializer=initializer,
+                                          dtype=tf.float32),
+            'decoder_h4': tf.get_variable(name="decoder_w_h4",
                                           shape=[self.n_hidden_1, self.n_input],
                                           initializer=initializer,
                                           dtype=tf.float32),
@@ -93,15 +103,23 @@ class ae():
                                           shape=[self.n_hidden_3],
                                           initializer=initializer,
                                           dtype=tf.float32),
+            'encoder_b4': tf.get_variable(name="encoder_b_h4",
+                                          shape=[self.n_hidden_4],
+                                          initializer=initializer,
+                                          dtype=tf.float32),
             'decoder_b1': tf.get_variable(name="decoder_b_h1",
-                                          shape=[self.n_hidden_2],
+                                          shape=[self.n_hidden_3],
                                           initializer=initializer,
                                           dtype=tf.float32),
             'decoder_b2': tf.get_variable(name="decoder_b_h2",
-                                          shape=[self.n_hidden_1],
+                                          shape=[self.n_hidden_2],
                                           initializer=initializer,
                                           dtype=tf.float32),
             'decoder_b3': tf.get_variable(name="decoder_b_h3",
+                                          shape=[self.n_hidden_1],
+                                          initializer=initializer,
+                                          dtype=tf.float32),
+            'decoder_b4': tf.get_variable(name="decoder_b_h4",
                                           shape=[self.n_input],
                                           initializer=initializer,
                                           dtype=tf.float32),
@@ -119,22 +137,28 @@ class ae():
             self.layer_3 = tf.nn.dropout(tf.sigmoid(tf.add(tf.matmul(self.layer_2, self.weights['encoder_h3']),
                                                     self.biases['encoder_b3'])), keep_prob=self.dropout)
 
+            self.layer_4 = tf.nn.dropout(tf.sigmoid(tf.add(tf.matmul(self.layer_3, self.weights['encoder_h4']),
+                                                    self.biases['encoder_b4'])), keep_prob=self.dropout)
+
     # Building the decoder
     def _init_decoder(self):
         with tf.variable_scope("decoder") as scope:
-            self.layer_4 = tf.nn.dropout(tf.sigmoid(tf.add(tf.matmul(self.layer_3, self.weights['decoder_h1']),
+            self.layer_5 = tf.nn.dropout(tf.sigmoid(tf.add(tf.matmul(self.layer_4, self.weights['decoder_h1']),
                                                     self.biases['decoder_b1'])), keep_prob=self.dropout)
 
-            self.layer_5 = tf.nn.dropout(tf.sigmoid(tf.add(tf.matmul(self.layer_4, self.weights['decoder_h2']),
+            self.layer_6 = tf.nn.dropout(tf.sigmoid(tf.add(tf.matmul(self.layer_5, self.weights['decoder_h2']),
                                                     self.biases['decoder_b2'])), keep_prob=self.dropout)
 
-            self.layer_6 = tf.nn.dropout(tf.sigmoid(tf.add(tf.matmul(self.layer_5, self.weights['decoder_h3']),
+            self.layer_7 = tf.nn.dropout(tf.sigmoid(tf.add(tf.matmul(self.layer_6, self.weights['decoder_h3']),
                                                     self.biases['decoder_b3'])), keep_prob=self.dropout)
+
+            self.layer_8 = tf.nn.dropout(tf.sigmoid(tf.add(tf.matmul(self.layer_7, self.weights['decoder_h4']),
+                                                    self.biases['decoder_b4'])), keep_prob=self.dropout)
 
 
     def _init_optimizer(self):
         # Prediction
-        self.y_pred = self.layer_6
+        self.y_pred = self.layer_8
         # Targets (Labels) are the input data.
         self.loss = tf.reduce_mean(tf.pow(self.y - self.y_pred, 2))
         self.optimizer = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss)

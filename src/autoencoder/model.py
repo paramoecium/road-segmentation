@@ -110,22 +110,22 @@ class ae():
     # Building the encoder
     def _init_encoder(self):
         with tf.variable_scope("encoder") as scope:
-            self.layer_1 = tf.nn.dropout(tf.nn.relu(tf.add(tf.matmul(self.x, self.weights['encoder_h1']),
+            self.layer_1 = tf.nn.dropout(tf.sigmoid(tf.add(tf.matmul(self.x, self.weights['encoder_h1']),
                                                     self.biases['encoder_b1'])), keep_prob=self.dropout)
 
-            self.layer_2 = tf.nn.dropout(tf.nn.relu(tf.add(tf.matmul(self.layer_1, self.weights['encoder_h2']),
+            self.layer_2 = tf.nn.dropout(tf.sigmoid(tf.add(tf.matmul(self.layer_1, self.weights['encoder_h2']),
                                                     self.biases['encoder_b2'])), keep_prob=self.dropout)
 
-            self.layer_3 = tf.nn.dropout(tf.nn.relu(tf.add(tf.matmul(self.layer_2, self.weights['encoder_h3']),
+            self.layer_3 = tf.nn.dropout(tf.sigmoid(tf.add(tf.matmul(self.layer_2, self.weights['encoder_h3']),
                                                     self.biases['encoder_b3'])), keep_prob=self.dropout)
 
     # Building the decoder
     def _init_decoder(self):
         with tf.variable_scope("decoder") as scope:
-            self.layer_4 = tf.nn.dropout(tf.nn.relu(tf.add(tf.matmul(self.layer_3, self.weights['decoder_h1']),
+            self.layer_4 = tf.nn.dropout(tf.sigmoid(tf.add(tf.matmul(self.layer_3, self.weights['decoder_h1']),
                                                     self.biases['decoder_b1'])), keep_prob=self.dropout)
 
-            self.layer_5 = tf.nn.dropout(tf.nn.relu(tf.add(tf.matmul(self.layer_4, self.weights['decoder_h2']),
+            self.layer_5 = tf.nn.dropout(tf.sigmoid(tf.add(tf.matmul(self.layer_4, self.weights['decoder_h2']),
                                                     self.biases['decoder_b2'])), keep_prob=self.dropout)
 
             self.layer_6 = tf.nn.dropout(tf.sigmoid(tf.add(tf.matmul(self.layer_5, self.weights['decoder_h3']),

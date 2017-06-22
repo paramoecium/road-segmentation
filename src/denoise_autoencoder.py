@@ -86,7 +86,7 @@ def mainFunc(argv):
     train_data_filename = ROOT_DIR + "data/training/groundtruth/"
     targets = dlm.extract_data(train_data_filename,
                                num_images=conf.train_size, ## TODO: change to 100 for full run
-                               num_of_transformations=0,
+                               num_of_transformations=1,
                                patch_size=conf.image_size,
                                patch_stride=conf.image_size,
                                border_size=0,
@@ -104,9 +104,9 @@ def mainFunc(argv):
     print("Deleting original data to free space")
     del targets
 
-    # print("corrupting the ground truth labels")
-    # train = corrupt(targets_patch_lvl, 0.05)
-    #
+    print("corrupting the ground truth labels")
+    train = corrupt(targets_patch_lvl, 0.01)
+
     # f, a = plt.subplots(nrows=2, ncols=4, figsize=(4, 4))
     # for i in range(4):
     #     a[0][i].imshow(np.reshape(targets[i,:,:,:], (targets.shape[2], targets.shape[3])), vmin=0, vmax=1)
@@ -154,9 +154,6 @@ def mainFunc(argv):
             #logging.info("Training epoch {}".format(i))
             print("Time elapsed:    %.3fs" % (time.time() - start))
             #logging.info("Time elapsed:    %.3fs" % (time.time() - start))
-
-            print("corrupting the ground truth labels")
-            train = corrupt(targets_patch_lvl, 0.01)
 
             perm_idx = np.random.permutation(conf.train_size)
             batch_index = 1

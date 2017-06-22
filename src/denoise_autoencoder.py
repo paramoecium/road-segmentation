@@ -114,6 +114,11 @@ def mainFunc(argv):
     # plt.savefig('./ae_patching.png')
 
     print("Initializing model")
+    print("Input size: {}".format(conf.train_image_size*conf.train_image_size))
+    print("H1 size: {}".format(conf.train_image_size*conf.train_image_size/2))
+    print("H2 size: {}".format(conf.train_image_size*conf.train_image_size/2/2))
+    print("H3 size: {}".format(conf.train_image_size*conf.train_image_size/2/2/2))
+    print("H4 size: {}".format(conf.train_image_size*conf.train_image_size/2/2/2/2))
     model = ae(n_input=conf.train_image_size*conf.train_image_size,
                n_hidden_1=conf.train_image_size*conf.train_image_size/2,
                n_hidden_2=conf.train_image_size*conf.train_image_size/2/2,

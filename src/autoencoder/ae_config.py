@@ -9,4 +9,5 @@ class Config():
     post_process_patch_size = 8
     train_image_size = image_size // post_process_patch_size
     train_size = 100
-    dropout_train = 0.5
+    dropout_train = 1.0
+    learning_rate = 0.0001

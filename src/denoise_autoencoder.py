@@ -126,7 +126,7 @@ def mainFunc(argv):
                n_hidden_2=int(conf.train_image_size*conf.train_image_size/2/2),
                n_hidden_3=int(conf.train_image_size*conf.train_image_size/2/2/2),
                n_hidden_4=int(conf.train_image_size*conf.train_image_size/2/2/2/2),
-               learning_rate=1e-3,
+               learning_rate=conf.learning_rate,
                dropout=conf.dropout_train)
 
     print("Starting TensorFlow session")

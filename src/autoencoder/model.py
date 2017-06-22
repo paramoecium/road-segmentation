@@ -13,7 +13,7 @@ class ae():
                  n_hidden_2,
                  n_hidden_3,
                  n_hidden_4,
-                 learning_rate=1e-3,
+                 learning_rate,
                  dropout=1.0):
 
         # Network Parameters
@@ -160,11 +160,8 @@ class ae():
         # Prediction
         self.y_pred = self.layer_8
         # Targets (Labels) are the input data.
-        y_true = self.y
-        # Define loss and optimizer, minimize the squared error
-        # TODO: change to more conventional optimiser?
-        self.loss = tf.reduce_mean(tf.pow(y_true - self.y_pred, 2))
-        self.optimizer = tf.train.RMSPropOptimizer(self.learning_rate).minimize(self.loss)
+        self.loss = tf.metrics.mean_squared_error(labels=self.y, prediction=self.y_pred)
+        self.optimizer = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss)
 
     def _init_summary(self):
         loss = tf.summary.scalar("loss", self.loss)

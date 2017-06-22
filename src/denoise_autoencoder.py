@@ -150,10 +150,11 @@ def mainFunc(argv):
 
         print("Starting training")
         for i in range(conf.num_epochs):
-            print("Training epoch {}".format(i))
-            #logging.info("Training epoch {}".format(i))
-            print("Time elapsed:    %.3fs" % (time.time() - start))
-            #logging.info("Time elapsed:    %.3fs" % (time.time() - start))
+            if i % 100 == 0:
+                print("Training epoch {}".format(i))
+                #logging.info("Training epoch {}".format(i))
+                print("Time elapsed:    %.3fs" % (time.time() - start))
+                #logging.info("Time elapsed:    %.3fs" % (time.time() - start))
 
             perm_idx = np.random.permutation(conf.train_size)
             batch_index = 1

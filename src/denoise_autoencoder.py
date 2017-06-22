@@ -185,16 +185,18 @@ def mainFunc(argv):
         print("Visualising encoder results and true images from eval set")
         # Applying encode and decode over test set
         # One batch for eval
-        d = train[batch_indices,:,:].reshape((conf.batch_size, conf.train_image_size**2))
-        t = targets_patch_lvl[batch_indices,:,:].reshape((conf.batch_size, conf.train_image_size**2))
-        feed_dict = model.make_inputs(d, t)
+        data_eval = train[batch_indices,:,:]
+        data_eval_fd = data_eval.reshape((conf.batch_size, conf.train_image_size**2))
+        targets_eval = targets_patch_lvl[batch_indices,:,:]
+        targets_eval_fd = targets_eval.reshape((conf.batch_size, conf.train_image_size**2))
+        feed_dict = model.make_inputs(data_eval_fd, targets_eval_fd)
         encode_decode = sess.run(model.y_pred, feed_dict=feed_dict)
         print("shape of predictions: {}".format(encode_decode.shape))
         # Compare original images with their reconstructions
         f, a = plt.subplots(3, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
         for i in range(conf.examples_to_show):
-            a[0][i].imshow(np.reshape(t[i,:,:], (conf.train_image_size, conf.train_image_size)))
-            a[1][i].imshow(np.reshape(d[i,:,:], (conf.train_image_size, conf.train_image_size)))
+            a[0][i].imshow(np.reshape(data_eval[i,:,:], (conf.train_image_size, conf.train_image_size)))
+            a[1][i].imshow(np.reshape(targets_eval[i,:,:], (conf.train_image_size, conf.train_image_size)))
             im = a[2][i].imshow(np.reshape(encode_decode[i].reshape(conf.train_image_size, conf.train_image_size), (conf.train_image_size, conf.train_image_size))) ## order - 'F'?
         plt.colorbar(im)
         plt.savefig('./autoencoder_eval.png')

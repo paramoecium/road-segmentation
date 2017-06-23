@@ -30,7 +30,7 @@ NUM_LABELS = 2
 NUM_CHANNELS = 3  # RGB images
 
 
-def corrupt(data, nu, type='masking_noise'):
+def corrupt(data, nu, type='salt_and_pepper'):
     """
     Corrupts the data for inputing into the de-noising autoencoder
 
@@ -40,7 +40,7 @@ def corrupt(data, nu, type='masking_noise'):
     Returns:
         numpy array of size (num_points, 1, img_size, img_size)
     """
-    if type == 'masking_noise':
+    if type == 'salt_and_pepper':
         img_max = np.ones(data.shape, dtype=bool)
         tmp = np.copy(data)
         img_max[data <= 0.5] = False
@@ -87,42 +87,37 @@ def mainFunc(argv):
     targets = dlm.extract_data(train_data_filename,
                                num_images=conf.train_size, ## TODO: change to 100 for full run
                                num_of_transformations=0,
-                               patch_size=conf.image_size,
-                               patch_stride=conf.image_size,
+                               patch_size=conf.test_image_size,
+                               patch_stride=conf.test_image_size,
                                border_size=0,
                                zero_center=False)
 
+    # The output of the CNN is predictions of size 608x608, the prediction is made on patches of size 8x8.
+    # Hence the denoising with be on made on images of size 76x76. Hence the training of the denoising autoencoder
+    # Is made on the training data (size 400x400) resized (spline interpolation) to 76x76
     print("Resizing ground truth images so that patches from CNN are now pixels")
-    targets_patch_lvl = np.zeros((targets.shape[0], targets.shape[2] // conf.post_process_patch_size, targets.shape[3] // conf.post_process_patch_size))
+    targets_patch_lvl = np.zeros((targets.shape[0], conf.test_image_resize, conf.test_image_resize))
     for i in range(targets.shape[0]):
         targets_patch_lvl[i,:,:] = resize(targets[i,0,:,:],
-                                          (targets[i,0,:,:].shape[0] // conf.post_process_patch_size, targets[i,0,:,:].shape[1] // conf.post_process_patch_size),
+                                          (conf.test_image_resize, conf.test_image_resize),
                                           order=0, preserve_range=True)
 
     print("New shape of each image: {}".format(targets_patch_lvl.shape)) ## (5, 50, 50)
 
-    print("Deleting original data to free space")
-    del targets
-
-    # f, a = plt.subplots(nrows=2, ncols=4, figsize=(4, 4))
-    # for i in range(4):
-    #     a[0][i].imshow(np.reshape(targets[i,:,:,:], (targets.shape[2], targets.shape[3])), vmin=0, vmax=1)
-    #     im = a[1][i].imshow(np.reshape(train[i,:,:], (train.shape[1], train.shape[2])), vmin=0, vmax=1)
-    # plt.colorbar(im)
-    # plt.savefig('./ae_patching.png')
+    del targets # Deleting original data to free space
 
     print("Initializing model")
-    print("Input size: {}".format(int(conf.train_image_size*conf.train_image_size)))
-    print("H1 size: {}".format(int(conf.train_image_size*conf.train_image_size/conf.ae_step)))
-    print("H2 size: {}".format(int(conf.train_image_size*conf.train_image_size/conf.ae_step/conf.ae_step)))
-    ##print("H3 size: {}".format(int(conf.train_image_size*conf.train_image_size/conf.ae_step/conf.ae_step/conf.ae_step)))
-    ##print("H4 size: {}".format(int(conf.train_image_size*conf.train_image_size/conf.ae_step/conf.ae_step/conf.ae_step/conf.ae_step)))
+    print("Input size: {}".format(int(conf.test_image_resize*conf.test_image_resize)))
+    print("H1 size: {}".format(int(conf.test_image_resize*conf.test_image_resize/conf.ae_step)))
+    print("H2 size: {}".format(int(conf.test_image_resize*conf.test_image_resize/conf.ae_step/conf.ae_step)))
+    ##print("H3 size: {}".format(int(conf.test_image_resize*conf.test_image_resize/conf.ae_step/conf.ae_step/conf.ae_step)))
+    ##print("H4 size: {}".format(int(conf.test_image_resize*conf.test_image_resize/conf.ae_step/conf.ae_step/conf.ae_step/conf.ae_step)))
 
-    model = ae(n_input=int(conf.train_image_size*conf.train_image_size),
-               n_hidden_1=int(conf.train_image_size*conf.train_image_size/conf.ae_step),
-               n_hidden_2=int(conf.train_image_size*conf.train_image_size/conf.ae_step/conf.ae_step),
-               ##n_hidden_3=int(conf.train_image_size*conf.train_image_size/conf.ae_step/conf.ae_step/conf.ae_step),
-               ##n_hidden_4=int(conf.train_image_size*conf.train_image_size/conf.ae_step/conf.ae_step/conf.ae_step/conf.ae_step),
+    model = ae(n_input=int(conf.test_image_resize*conf.test_image_resize),
+               n_hidden_1=int(conf.test_image_resize*conf.test_image_resize/conf.ae_step),
+               n_hidden_2=int(conf.test_image_resize*conf.test_image_resize/conf.ae_step/conf.ae_step),
+               ##n_hidden_3=int(conf.test_image_resize*conf.test_image_resize/conf.ae_step/conf.ae_step/conf.ae_step),
+               ##n_hidden_4=int(conf.test_image_resize*conf.test_image_resize/conf.ae_step/conf.ae_step/conf.ae_step/conf.ae_step),
                learning_rate=conf.learning_rate,
                dropout=conf.dropout_train)
 
@@ -163,8 +158,8 @@ def mainFunc(argv):
                 offset = (batch_index*conf.batch_size) % (conf.train_size - conf.batch_size)
                 batch_indices = perm_idx[offset:(offset + conf.batch_size)]
 
-                batch_inputs = train[batch_indices,:,:].reshape((conf.batch_size, conf.train_image_size**2))
-                batch_targets = targets_patch_lvl[batch_indices,:,:].reshape((conf.batch_size, conf.train_image_size**2))
+                batch_inputs = train[batch_indices,:,:].reshape((conf.batch_size, conf.test_image_resize**2))
+                batch_targets = targets_patch_lvl[batch_indices,:,:].reshape((conf.batch_size, conf.test_image_resize**2))
 
                 ##print("shape of batch inputs: {0} and outputs: {1}".format(batch_inputs.shape, batch_targets.shape))
 
@@ -188,18 +183,18 @@ def mainFunc(argv):
         # Applying encode and decode over test set
         # One batch for eval
         data_eval = train[batch_indices,:,:]
-        data_eval_fd = data_eval.reshape((conf.batch_size, conf.train_image_size**2))
+        data_eval_fd = data_eval.reshape((conf.batch_size, conf.test_image_resize**2))
         targets_eval = targets_patch_lvl[batch_indices,:,:]
-        targets_eval_fd = targets_eval.reshape((conf.batch_size, conf.train_image_size**2))
+        targets_eval_fd = targets_eval.reshape((conf.batch_size, conf.test_image_resize**2))
         feed_dict = model.make_inputs(data_eval_fd, targets_eval_fd)
         encode_decode = sess.run(model.y_pred, feed_dict=feed_dict)
         print("shape of predictions: {}".format(encode_decode.shape))
         # Compare original images with their reconstructions
         f, a = plt.subplots(3, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
         for i in range(conf.examples_to_show):
-            a[0][i].imshow(np.reshape(data_eval[i,:,:], (conf.train_image_size, conf.train_image_size)))
-            a[1][i].imshow(np.reshape(targets_eval[i,:,:], (conf.train_image_size, conf.train_image_size)))
-            im = a[2][i].imshow(np.reshape(encode_decode[i].reshape(conf.train_image_size, conf.train_image_size), (conf.train_image_size, conf.train_image_size))) ## order - 'F'?
+            a[0][i].imshow(np.reshape(data_eval[i,:,:], (conf.test_image_resize, conf.test_image_resize)))
+            a[1][i].imshow(np.reshape(targets_eval[i,:,:], (conf.test_image_resize, conf.test_image_resize)))
+            im = a[2][i].imshow(np.reshape(encode_decode[i], (conf.test_image_resize, conf.test_image_resize)))
         plt.colorbar(im)
         plt.savefig('./autoencoder_eval_{}.png'.format(tag))
 

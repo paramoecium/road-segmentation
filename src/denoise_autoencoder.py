@@ -200,7 +200,7 @@ def mainFunc(argv):
             plt.colorbar(im)
             plt.savefig('./autoencoder_eval_{}.png'.format(tag))
 
-        if conf.run_on_test_set
+        if conf.run_on_test_set:
             print("DAE on the predictions")
             prediction_test_dir = "../results/CNN_Output/test/high_res_raw/"
             if not os.path.isdir(prediction_test_dir):

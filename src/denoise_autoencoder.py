@@ -291,9 +291,10 @@ def mainFunc(argv):
             for i in range(1, conf.test_size+1):
                 print("Test img: " + str(i))
                 img_name = "ae_test_" + str(i)
-                output_path = "../results/Autoencoder_Output/raw/" + img_name
+                output_path = "../results/Autoencoder_Output/tmp/" + img_name
                 prediction = np.reshape(predictions[i-1,:], (conf.test_image_resize, conf.test_image_resize))
-                save_prediction(prediction, output_path)
+                #save_prediction(prediction, output_path)
+                scipy.misc.imsave(output_path + ".png", prediction)
 
             print("Finished saving autoencoder outputs to disk")
 

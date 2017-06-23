@@ -172,3 +172,8 @@ class ae():
             self.x: data_input,
             self.y: data_targets,
         }
+
+    def make_inputs_predict(self, data_input):
+        return {
+            self.x: data_input,
+        }

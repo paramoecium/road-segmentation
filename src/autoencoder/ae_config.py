@@ -16,3 +16,5 @@ class Config():
     learning_rate = 0.005
     ae_step = 10
     corruption = 0.01
+    visualise_training = False
+    run_on_test_set = True

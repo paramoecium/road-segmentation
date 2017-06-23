@@ -14,5 +14,5 @@ class Config():
     test_size = 50 # test data set size
     dropout_train = 1.0
     learning_rate = 0.005
-    ae_step = 24
+    ae_step = 10
     corruption = 0.01

@@ -274,19 +274,19 @@ def mainFunc(argv):
                                     res_img[j: j + stride, i: i + stride] = 0
                     return res_img
 
-                    # Show per pixel probabilities
-                    prediction_as_per_pixel_img = label_to_img(conf.test_image_size,
-                                                               conf.test_image_size,
-                                                               conf.cnn_pred_size,
-                                                               conf.cnn_pred_size,
-                                                               prediction)
-                    # Show per patch probabilities
-                    prediction_as_img = pixels_to_patches(prediction_as_per_pixel_img)
+                # Show per pixel probabilities
+                prediction_as_per_pixel_img = label_to_img(conf.test_image_size,
+                                                           conf.test_image_size,
+                                                           conf.cnn_pred_size,
+                                                           conf.cnn_pred_size,
+                                                           prediction)
+                # Show per patch probabilities
+                prediction_as_img = pixels_to_patches(prediction_as_per_pixel_img)
 
-                    # Raw image
-                    scipy.misc.imsave(output_path.replace("/raw/", "/high_res_raw/") + "_pixels.png",
-                                      prediction_as_per_pixel_img)
-                    scipy.misc.imsave(output_path + "_patches.png", prediction_as_img)
+                # Raw image
+                scipy.misc.imsave(output_path.replace("/raw/", "/high_res_raw/") + "_pixels.png",
+                                  prediction_as_per_pixel_img)
+                scipy.misc.imsave(output_path + "_patches.png", prediction_as_img)
 
             # Save outputs to disk
             for i in range(1, conf.test_size+1):

@@ -250,6 +250,7 @@ def mainFunc(argv):
                 Returns:
                     Null
                 """
+                print("output path: {}".format(output_path))
 
                 def pixels_to_patches(img, round=False, foreground_threshold=0.5, stride=conf.cnn_pred_size):
                     """
@@ -282,9 +283,9 @@ def mainFunc(argv):
                     prediction_as_img = pixels_to_patches(prediction_as_per_pixel_img)
 
                     # Raw image
-                    scipy.misc.imsave(output_path_raw.replace("/raw/", "/high_res_raw/") + "_pixels.png",
+                    scipy.misc.imsave(output_path.replace("/raw/", "/high_res_raw/") + "_pixels.png",
                                       prediction_as_per_pixel_img)
-                    scipy.misc.imsave(output_path_raw + "_patches.png", prediction_as_img)
+                    scipy.misc.imsave(output_path + "_patches.png", prediction_as_img)
 
             # Save outputs to disk
             for i in range(1, conf.test_size+1):

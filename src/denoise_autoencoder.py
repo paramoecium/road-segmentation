@@ -251,7 +251,6 @@ def mainFunc(argv):
                     Null
                 """
                 print("output path: {}".format(output_path))
-                pdb.set_trace()
 
                 def pixels_to_patches(img, round=False, foreground_threshold=0.5, stride=conf.cnn_pred_size):
                     """

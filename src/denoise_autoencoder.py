@@ -20,6 +20,7 @@ from autoencoder.ae_config import Config as conf
 import patch_extraction_module as pem
 import data_loading_module as dlm
 import constants as const
+from scaling import label_to_img, img_to_label
 
 tf.set_random_seed(123)
 np.random.seed(123)
@@ -97,9 +98,12 @@ def mainFunc(argv):
     print("Resizing ground truth images so that patches from CNN are now pixels")
     targets_patch_lvl = np.zeros((targets.shape[0], conf.test_image_resize, conf.test_image_resize))
     for i in range(targets.shape[0]):
-        targets_patch_lvl[i,:,:] = resize(targets[i,0,:,:],
-                                          (conf.test_image_resize, conf.test_image_resize),
-                                          order=0, preserve_range=True)
+        # targets_patch_lvl[i,:,:] = resize(targets[i,0,:,:],
+        #                                   (conf.test_image_resize, conf.test_image_resize),
+        #                                   order=0, preserve_range=True)
+        targets_patch_lvl[i,:,:] = img_to_label(conf.test_image_resize, conf.test_image_resize,
+                                                conf.cnn_pred_size, conf.cnn_pred_size,
+                                                targets[i,0,:,:])
 
     print("New shape of each image: {}".format(targets_patch_lvl.shape))
 
@@ -203,6 +207,7 @@ def mainFunc(argv):
         if conf.run_on_test_set:
             print("DAE on the predictions")
             prediction_test_dir = "../results/CNN_Output/test/high_res_raw/"
+            output_path_raw = "../results/Autoencoder_Output/raw/"
             if not os.path.isdir(prediction_test_dir):
                 raise ValueError('no CNN data to run denoising autoencoder on')
 
@@ -235,36 +240,21 @@ def mainFunc(argv):
             predictions = sess.run(model.y_pred, feed_dict) ## numpy array (50, 5776)
             print("shape of predictions: {}".format(predictions.shape))
 
-            def save_prediction(prediction, img_name, output_path):
-
-                ### AUXILIARY FUNCTION 0 ###
-                def label_to_binary_img(imgwidth, imgheight, w, h, labels):
-                    array_labels = np.zeros([imgwidth, imgheight])
-                    idx = 0
-                    for i in range(0, imgheight, h):
-                        for j in range(0, imgwidth, w):
-                            if labels[idx][0] > 0.5:
-                                l = 0
-                            else:
-                                l = 1
-                            array_labels[j:j + w, i:i + h] = l
-                            idx += 1
-                    return array_labels
-
-                ### END OF AUXILIARY FUNCTION 0 ###
-
-                ### AUXILIARY FUNCTION 1 ###
-                def label_to_img(imgwidth, imgheight, w, h, labels):
-                    array_labels = np.zeros((imgwidth, imgheight))
-                    idx = 0
-                    for i in range(0, imgheight, h):
-                        for j in range(0, imgwidth, w):
-                            array_labels[j:j + w, i:i + h] = labels[i,j]
-                            idx += 1
-                    return array_labels
-                ### END OF AUXILIARY FUNCTION 1 ###
+            def save_prediction(prediction, output_path):
+                """
+                Saves a single image prediction to disk as a png file
+                From model_large_context
+                Args:
+                    Prediction: numpy array with prediction
+                    output_path: str
+                Returns:
+                    Null
+                """
 
                 def pixels_to_patches(img, round=False, foreground_threshold=0.5, stride=conf.cnn_pred_size):
+                    """
+                    Smoothing an up sampled/upscaled img
+                    """
                     res_img = np.zeros(img.shape)
                     for i in range(0, img.shape[0], stride):
                         for j in range(0, img.shape[1], stride):
@@ -282,28 +272,27 @@ def mainFunc(argv):
                                     res_img[j: j + stride, i: i + stride] = 0
                     return res_img
 
-                stride = conf.cnn_pred_size
-                # Show per pixel probabilities
-                prediction_as_per_pixel_img = label_to_img(conf.test_image_size,
-                                                           conf.test_image_size,
-                                                           conf.cnn_pred_size,
-                                                           conf.cnn_pred_size,
-                                                           prediction)
-                # Show per patch probabilities
-                prediction_as_img = pixels_to_patches(prediction_as_per_pixel_img)
+                    # Show per pixel probabilities
+                    prediction_as_per_pixel_img = label_to_img(conf.test_image_size,
+                                                               conf.test_image_size,
+                                                               conf.cnn_pred_size,
+                                                               conf.cnn_pred_size,
+                                                               prediction)
+                    # Show per patch probabilities
+                    prediction_as_img = pixels_to_patches(prediction_as_per_pixel_img)
 
-                # Raw image
-                scipy.misc.imsave(output_path_raw.replace("/raw/", "/high_res_raw/") + "_pixels.png",
-                                  prediction_as_per_pixel_img)
-                scipy.misc.imsave(output_path_raw + "_patches.png", prediction_as_img)
+                    # Raw image
+                    scipy.misc.imsave(output_path_raw.replace("/raw/", "/high_res_raw/") + "_pixels.png",
+                                      prediction_as_per_pixel_img)
+                    scipy.misc.imsave(output_path_raw + "_patches.png", prediction_as_img)
 
             # Save outputs to disk
             for i in range(1, conf.test_size+1):
                 print("Test img: " + str(i))
                 img_name = "ae_test_" + str(i)
-                output_path = "../results/Autoencoder_Output/raw/"
+                output_path = "../results/Autoencoder_Output/raw/" + img_name
                 prediction = np.reshape(predictions[i-1,:], (conf.test_image_resize, conf.test_image_resize))
-                save_prediction(prediction, img_name, output_path)
+                save_prediction(prediction, output_path)
 
             print("Finished saving autoencoder outputs to disk")
 

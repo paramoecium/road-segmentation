@@ -230,20 +230,10 @@ def mainFunc(argv):
 
             pdb.set_trace()
 
-            # batchify the predictions
-            perm_idx = np.random.permutation(conf.test_size)
-            batch_index = 1
-            predictions = []
-            for step in range(int(conf.test_size / conf.batch_size)):
-                offset = (batch_index*conf.batch_size) % (conf.test_size - conf.batch_size)
-                batch_indices = perm_idx[offset:(offset + conf.batch_size)]
-                batch_inputs = test_patch_lvl[batch_indices,:,:].reshape((conf.batch_size, conf.test_image_resize**2))
-                feed_dict = model.make_inputs_predict(batch_inputs)
-                p = sess.run(model.y_pred, feed_dict)
-                print("Type of p: {}".format(type(p)))
-                predictions.append(p)
-                batch_index += 1
-            print("number of predictions: {}".format(len(predictions)))
+            batch_inputs = test_patch_lvl.reshape((conf.test_size, conf.test_image_resize**2))
+            feed_dict = model.make_inputs_predict(batch_inputs)
+            predictions = sess.run(model.y_pred, feed_dict) ## numpy array (50, 5776)
+            print("shape of predictions: {}".format(predictions.shape))
 
             def save_prediction(prediction, img_name, output_path):
 
@@ -312,7 +302,7 @@ def mainFunc(argv):
                 print("Test img: " + str(i))
                 img_name = "ae_test_" + str(i)
                 output_path = "../results/Autoencoder_Output/raw/"
-                prediction = np.reshape(predictions[i-1], (conf.test_image_resize, conf.test_image_resize))
+                prediction = np.reshape(predictions[i-1,:,:], (conf.test_image_resize, conf.test_image_resize))
                 save_prediction(prediction, img_name, output_path)
 
             print("Finished saving autoencoder outputs to disk")

@@ -24,7 +24,6 @@ import constants as const
 tf.set_random_seed(123)
 np.random.seed(123)
 
-ROOT_DIR = "../"
 PIXEL_DEPTH = 255
 NUM_LABELS = 2
 NUM_CHANNELS = 3  # RGB images
@@ -83,7 +82,7 @@ def mainFunc(argv):
         configProto = tf.ConfigProto()
 
     print("loading ground truth data")
-    train_data_filename = ROOT_DIR + "data/training/groundtruth/"
+    train_data_filename = "../data/training/groundtruth/"
     targets = dlm.extract_data(train_data_filename,
                                num_images=conf.train_size,
                                num_of_transformations=0,
@@ -102,7 +101,7 @@ def mainFunc(argv):
                                           (conf.test_image_resize, conf.test_image_resize),
                                           order=0, preserve_range=True)
 
-    print("New shape of each image: {}".format(targets_patch_lvl.shape)) ## (5, 50, 50)
+    print("New shape of each image: {}".format(targets_patch_lvl.shape))
 
     del targets # Deleting original data to free space
 
@@ -172,31 +171,150 @@ def mainFunc(argv):
                     train_writer.add_summary(train_summary, global_step)
 
                 if global_step % conf.checkpoint_frequency == 0:
-                    saver.save(sess, os.path.join(train_logfolderPath, "{}-{}-ep{}.ckpt".format(tag_string, timestamp, i)), global_step=global_step)
+                    # traing is quick, no need to save checkpoints for every checkpoint frequency
+                    # saver.save(sess, os.path.join(train_logfolderPath, "{}-{}-ep{}.ckpt".format(tag_string, timestamp, i)), global_step=global_step)
+                    pass
                 global_step += 1
                 batch_index += 1
 
         saver.save(sess, os.path.join(train_logfolderPath, "{}-{}-ep{}-final.ckpt".format(tag_string, timestamp, conf.num_epochs)))
         print("Done with training for {} epochs".format(conf.num_epochs))
 
-        print("Visualising encoder results and true images from eval set")
-        # Applying encode and decode over test set
-        # One batch for eval
-        data_eval = train[batch_indices,:,:]
-        data_eval_fd = data_eval.reshape((conf.batch_size, conf.test_image_resize**2))
-        targets_eval = targets_patch_lvl[batch_indices,:,:]
-        targets_eval_fd = targets_eval.reshape((conf.batch_size, conf.test_image_resize**2))
-        feed_dict = model.make_inputs(data_eval_fd, targets_eval_fd)
-        encode_decode = sess.run(model.y_pred, feed_dict=feed_dict)
-        print("shape of predictions: {}".format(encode_decode.shape))
-        # Compare original images with their reconstructions
-        f, a = plt.subplots(3, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
-        for i in range(conf.examples_to_show):
-            a[0][i].imshow(np.reshape(data_eval[i,:,:], (conf.test_image_resize, conf.test_image_resize)))
-            a[1][i].imshow(np.reshape(targets_eval[i,:,:], (conf.test_image_resize, conf.test_image_resize)))
-            im = a[2][i].imshow(np.reshape(encode_decode[i], (conf.test_image_resize, conf.test_image_resize)))
-        plt.colorbar(im)
-        plt.savefig('./autoencoder_eval_{}.png'.format(tag))
+        if conf.visualise_training:
+            print("Visualising encoder results and true images from train set")
+            # Applying encode and decode over test set
+            # One batch for eval
+            data_eval = train[batch_indices,:,:]
+            data_eval_fd = data_eval.reshape((conf.batch_size, conf.test_image_resize**2))
+            targets_eval = targets_patch_lvl[batch_indices,:,:]
+            targets_eval_fd = targets_eval.reshape((conf.batch_size, conf.test_image_resize**2))
+            feed_dict = model.make_inputs(data_eval_fd, targets_eval_fd)
+            encode_decode = sess.run(model.y_pred, feed_dict=feed_dict)
+            print("shape of predictions: {}".format(encode_decode.shape))
+            # Compare original images with their reconstructions
+            f, a = plt.subplots(3, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
+            for i in range(conf.examples_to_show):
+                a[0][i].imshow(np.reshape(data_eval[i,:,:], (conf.test_image_resize, conf.test_image_resize)))
+                a[1][i].imshow(np.reshape(targets_eval[i,:,:], (conf.test_image_resize, conf.test_image_resize)))
+                im = a[2][i].imshow(np.reshape(encode_decode[i], (conf.test_image_resize, conf.test_image_resize)))
+            plt.colorbar(im)
+            plt.savefig('./autoencoder_eval_{}.png'.format(tag))
+
+        if conf.run_on_test_set
+            print("DAE on the predictions")
+            prediction_test_dir = "../results/CNN_Output/test/high_res_raw/"
+            if not os.path.isdir(prediction_test_dir):
+                raise ValueError('no CNN data to run denoising autoencoder on')
+
+            print("Loading test set")
+            test = dlm.extract_data(prediction_test_dir,
+                                    num_images=conf.test_size,
+                                    num_of_transformations=0,
+                                    patch_size=conf.test_image_size, # train images are of size 400 for test this needs to be changed
+                                    patch_stride=conf.test_image_size, # train images are of size 400 for test this needs to be changed
+                                    border_size=0,
+                                    zero_center=False)
+
+            print("Shape of test set: {}".format(test.shape))
+            # resize the images
+            print("Resizing test images so that patches from CNN are now pixels")
+            test_patch_lvl = np.zeros((test.shape[0], conf.test_image_resize, conf.test_image_resize))
+            for i in range(test.shape[0]):
+                test_patch_lvl[i,:,:] = resize(test[i,0,:,:],
+                                               (conf.test_image_resize, conf.test_image_resize),
+                                               order=0, preserve_range=True)
+
+            print("New shape of each image: {}".format(test_patch_lvl.shape))
+            del test
+
+            pdb.set_trace()
+
+            # batchify the predictions
+            perm_idx = np.random.permutation(conf.test_size)
+            batch_index = 1
+            predictions = []
+            for step in range(int(conf.test_size / conf.batch_size)):
+                offset = (batch_index*conf.batch_size) % (conf.test_size - conf.batch_size)
+                batch_indices = perm_idx[offset:(offset + conf.batch_size)]
+                batch_inputs = test_patch_lvl[batch_indices,:,:].reshape((conf.batch_size, conf.test_image_resize**2))
+                feed_dict = model.make_inputs_predict(batch_inputs)
+                p = sess.run(model.y_pred, feed_dict)
+                print("Type of p: {}".format(type(p)))
+                predictions.append(p)
+                batch_index += 1
+            print("number of predictions: {}".format(len(predictions)))
+
+            def save_prediction(prediction, img_name, output_path):
+
+                ### AUXILIARY FUNCTION 0 ###
+                def label_to_binary_img(imgwidth, imgheight, w, h, labels):
+                    array_labels = np.zeros([imgwidth, imgheight])
+                    idx = 0
+                    for i in range(0, imgheight, h):
+                        for j in range(0, imgwidth, w):
+                            if labels[idx][0] > 0.5:
+                                l = 0
+                            else:
+                                l = 1
+                            array_labels[j:j + w, i:i + h] = l
+                            idx += 1
+                    return array_labels
+
+                ### END OF AUXILIARY FUNCTION 0 ###
+
+                ### AUXILIARY FUNCTION 1 ###
+                def label_to_img(imgwidth, imgheight, w, h, labels):
+                    array_labels = np.zeros((imgwidth, imgheight))
+                    idx = 0
+                    for i in range(0, imgheight, h):
+                        for j in range(0, imgwidth, w):
+                            array_labels[j:j + w, i:i + h] = labels[i,j]
+                            idx += 1
+                    return array_labels
+                ### END OF AUXILIARY FUNCTION 1 ###
+
+                def pixels_to_patches(img, round=False, foreground_threshold=0.5, stride=conf.cnn_pred_size):
+                    res_img = np.zeros(img.shape)
+                    for i in range(0, img.shape[0], stride):
+                        for j in range(0, img.shape[1], stride):
+                            tmp = np.zeros((stride, stride))
+                            tmp[0: stride, 0: stride] = img[j: j + stride, i: i + stride]
+                            tmp[tmp < 0.5] = 0
+                            tmp[tmp >= 0.5] = 1
+                            res_img[j: j + stride, i: i + stride] = np.mean(tmp)
+
+                            # res_img[j : j + stride, i : i + stride] = np.mean(img[j : j + stride, i : i + stride])
+                            if round:
+                                if res_img[j, i] >= foreground_threshold:
+                                    res_img[j: j + stride, i: i + stride] = 1
+                                else:
+                                    res_img[j: j + stride, i: i + stride] = 0
+                    return res_img
+
+                stride = conf.cnn_pred_size
+                # Show per pixel probabilities
+                prediction_as_per_pixel_img = label_to_img(conf.test_image_size,
+                                                           conf.test_image_size,
+                                                           conf.cnn_pred_size,
+                                                           conf.cnn_pred_size,
+                                                           prediction)
+                # Show per patch probabilities
+                prediction_as_img = pixels_to_patches(prediction_as_per_pixel_img)
+
+                # Raw image
+                scipy.misc.imsave(output_path_raw.replace("/raw/", "/high_res_raw/") + "_pixels.png",
+                                  prediction_as_per_pixel_img)
+                scipy.misc.imsave(output_path_raw + "_patches.png", prediction_as_img)
+
+            # Save outputs to disk
+            for i in range(1, conf.test_size+1):
+                print("Test img: " + str(i))
+                img_name = "ae_test_" + str(i)
+                output_path = "../results/Autoencoder_Output/raw/"
+                prediction = np.reshape(predictions[i-1], (conf.test_image_resize, conf.test_image_resize))
+                save_prediction(prediction, img_name, output_path)
+
+            print("Finished saving autoencoder outputs to disk")
 
 if __name__ == "__main__":
     #logging.basicConfig(filename='autoencoder.log', level=logging.DEBUG)

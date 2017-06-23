@@ -14,6 +14,9 @@ mkdir -p results/CNN_Output/training/high_res_raw
 mkdir -p results/CNN_Output_Baseline/test/raw
 mkdir -p results/CNN_Output_Baseline/training/raw
 
+mkdir -p results/Autoencoder_Output/raw
+mkdir -p results/Autoencoder_Output/high_res_raw
+
 # Create tmp directories to hold TensorFlow results
 mkdir -p tmp
 mkdir -p src/baseline/tmp

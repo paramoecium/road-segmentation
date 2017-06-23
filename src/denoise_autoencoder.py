@@ -13,6 +13,8 @@ import pdb
 import math
 import logging
 from skimage.transform import resize
+import scipy
+import scipy.misc
 
 from autoencoder.model import ae
 from autoencoder.ae_config import Config as conf
@@ -233,8 +235,6 @@ def mainFunc(argv):
             print("New shape of each image: {}".format(test_patch_lvl.shape))
             del test
 
-            pdb.set_trace()
-
             batch_inputs = test_patch_lvl.reshape((conf.test_size, conf.test_image_resize**2))
             feed_dict = model.make_inputs_predict(batch_inputs)
             predictions = sess.run(model.y_pred, feed_dict) ## numpy array (50, 5776)
@@ -251,6 +251,7 @@ def mainFunc(argv):
                     Null
                 """
                 print("output path: {}".format(output_path))
+                pdb.set_trace()
 
                 def pixels_to_patches(img, round=False, foreground_threshold=0.5, stride=conf.cnn_pred_size):
                     """

@@ -85,10 +85,10 @@ def mainFunc(argv):
     print("loading ground truth data")
     train_data_filename = ROOT_DIR + "data/training/groundtruth/"
     targets = dlm.extract_data(train_data_filename,
-                               num_images=conf.train_size, ## TODO: change to 100 for full run
+                               num_images=conf.train_size,
                                num_of_transformations=0,
-                               patch_size=conf.test_image_size,
-                               patch_stride=conf.test_image_size,
+                               patch_size=conf.train_image_size, # train images are of size 400 for test this needs to be changed
+                               patch_stride=conf.train_image_size, # train images are of size 400 for test this needs to be changed
                                border_size=0,
                                zero_center=False)
 

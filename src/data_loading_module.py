@@ -11,11 +11,14 @@ import constants as const
 
 def extract_data(filename_base, num_images, num_of_transformations=6, patch_size=const.IMG_PATCH_SIZE,
                  patch_stride=const.IMG_PATCH_STRIDE, border_size=const.IMG_BORDER_SIZE,
-                 zero_center=True):
+                 zero_center=True, autoencoder=False):
     """Extract patches from images."""
     imgs = []
     for i in range(1, num_images+1):
-        imageid = "satImage_%.3d" % i
+        if autoencoder:
+            imageid = "raw_test_" + str(i) + "_pixels"
+        else:
+            imageid = "satImage_%.3d" % i
         image_filename = filename_base + imageid + ".png"
         if os.path.isfile(image_filename):
             print('Loading ' + image_filename)

@@ -213,7 +213,8 @@ def mainFunc(argv):
                                     patch_size=conf.test_image_size, # train images are of size 400 for test this needs to be changed
                                     patch_stride=conf.test_image_size, # train images are of size 400 for test this needs to be changed
                                     border_size=0,
-                                    zero_center=False)
+                                    zero_center=False,
+                                    autoencoder=True)
 
             print("Shape of test set: {}".format(test.shape))
             # resize the images

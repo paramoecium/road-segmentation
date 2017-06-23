@@ -100,12 +100,12 @@ def mainFunc(argv):
     print("Resizing ground truth images so that patches from CNN are now pixels")
     targets_patch_lvl = np.zeros((targets.shape[0], conf.test_image_resize, conf.test_image_resize))
     for i in range(targets.shape[0]):
-        # targets_patch_lvl[i,:,:] = resize(targets[i,0,:,:],
-        #                                   (conf.test_image_resize, conf.test_image_resize),
-        #                                   order=0, preserve_range=True)
-        targets_patch_lvl[i,:,:] = img_to_label(conf.test_image_resize, conf.test_image_resize,
-                                                conf.cnn_pred_size, conf.cnn_pred_size,
-                                                targets[i,0,:,:])
+        targets_patch_lvl[i,:,:] = resize(targets[i,0,:,:],
+                                          (conf.test_image_resize, conf.test_image_resize),
+                                          order=0, preserve_range=True)
+        # targets_patch_lvl[i,:,:] = img_to_label(conf.test_image_resize, conf.test_image_resize,
+        #                                         conf.cnn_pred_size, conf.cnn_pred_size,
+        #                                         targets[i,0,:,:])
 
     print("New shape of each image: {}".format(targets_patch_lvl.shape))
 

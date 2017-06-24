@@ -313,7 +313,7 @@ def mainFunc(argv):
             f, a = plt.subplots(2, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
             for i in range(conf.examples_to_show):
                 a[0][i].imshow(np.reshape(test_patch_lvl[i,:,:], (conf.test_image_resize, conf.test_image_resize)))
-                im = a[1][i].imshow(np.reshape(predictions[i,:], (conf.test_image_resize, conf.test_image_resize)))
+                im = a[1][i].imshow(np.reshape(predictions[i], (conf.test_image_resize, conf.test_image_resize)))
             plt.colorbar(im)
             plt.savefig('./autoencoder_prediction_{}.png'.format(tag))
 

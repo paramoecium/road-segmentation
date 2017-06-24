@@ -111,6 +111,15 @@ def mainFunc(argv):
 
     del targets # Deleting original data to free space
 
+    print("Training and eval data for DAE")
+    train = corrupt(targets_patch_lvl, float(np.random.choice(a = [0.01, 0.03], size=1, p=[0.5, 0.5])))
+    validation = corrupt(targets_patch_lvl, float(np.random.choice(a = [0.01, 0.03], size=1, p=[0.5, 0.5])))
+    for i in range(99):
+        np.append(train,
+                  corrupt(targets_patch_lvl, float(np.random.choice(a = [0.01, 0.03], size=1, p=[0.5, 0.5])))
+                  axis=0)
+        print("Shape of training data: {}".format(train.shape))
+
     print("Initializing model")
     print("Input size: {}".format(int(conf.test_image_resize*conf.test_image_resize)))
     print("H1 size: {}".format(int(conf.test_image_resize*conf.test_image_resize/conf.ae_step)))
@@ -148,14 +157,11 @@ def mainFunc(argv):
 
         print("Starting training")
         for i in range(conf.num_epochs):
-            if i % 100 == 0:
+            if i % 10 == 0:
                 print("Training epoch {}".format(i))
                 #logging.info("Training epoch {}".format(i))
                 print("Time elapsed:    %.3fs" % (time.time() - start))
                 #logging.info("Time elapsed:    %.3fs" % (time.time() - start))
-
-            ## corrupting the ground truth labels
-            train = corrupt(targets_patch_lvl, float(np.random.choice(a = [0.01, 0.03], size=1, p=[0.5, 0.5])))
 
             perm_idx = np.random.permutation(conf.train_size)
             batch_index = 1
@@ -190,9 +196,9 @@ def mainFunc(argv):
             print("Visualising encoder results and true images from train set")
             # Applying encode and decode over test set
             # One batch for eval
-            data_eval = train[batch_indices,:,:]
+            data_eval = validation[:conf.batch_size,:,:]
             data_eval_fd = data_eval.reshape((conf.batch_size, conf.test_image_resize**2))
-            targets_eval = targets_patch_lvl[batch_indices,:,:]
+            targets_eval = targets_patch_lvl[:conf.batch_size,:,:]
             targets_eval_fd = targets_eval.reshape((conf.batch_size, conf.test_image_resize**2))
             feed_dict = model.make_inputs(data_eval_fd, targets_eval_fd)
             encode_decode = sess.run(model.y_pred, feed_dict=feed_dict)
@@ -240,52 +246,51 @@ def mainFunc(argv):
             predictions = sess.run(model.y_pred, feed_dict) ## numpy array (50, 5776)
             print("shape of predictions: {}".format(predictions.shape))
 
-            def save_prediction(prediction, output_path):
-                """
-                Saves a single image prediction to disk as a png file
-                From model_large_context
-                Args:
-                    Prediction: numpy array with prediction
-                    output_path: str
-                Returns:
-                    Null
-                """
-                print("output path: {}".format(output_path))
-
-                def pixels_to_patches(img, round=False, foreground_threshold=0.5, stride=conf.cnn_pred_size):
-                    """
-                    Smoothing an up sampled/upscaled img
-                    """
-                    res_img = np.zeros(img.shape)
-                    for i in range(0, img.shape[0], stride):
-                        for j in range(0, img.shape[1], stride):
-                            tmp = np.zeros((stride, stride))
-                            tmp[0: stride, 0: stride] = img[j: j + stride, i: i + stride]
-                            tmp[tmp < 0.5] = 0
-                            tmp[tmp >= 0.5] = 1
-                            res_img[j: j + stride, i: i + stride] = np.mean(tmp)
-
-                            # res_img[j : j + stride, i : i + stride] = np.mean(img[j : j + stride, i : i + stride])
-                            if round:
-                                if res_img[j, i] >= foreground_threshold:
-                                    res_img[j: j + stride, i: i + stride] = 1
-                                else:
-                                    res_img[j: j + stride, i: i + stride] = 0
-                    return res_img
-
-                # Show per pixel probabilities
-                prediction_as_per_pixel_img = label_to_img(conf.test_image_size,
-                                                           conf.test_image_size,
-                                                           conf.cnn_pred_size,
-                                                           conf.cnn_pred_size,
-                                                           prediction)
-                # Show per patch probabilities
-                prediction_as_img = pixels_to_patches(prediction_as_per_pixel_img)
-
-                # Raw image
-                scipy.misc.imsave(output_path.replace("/raw/", "/high_res_raw/") + "_pixels.png",
-                                  prediction_as_per_pixel_img)
-                scipy.misc.imsave(output_path + "_patches.png", prediction_as_img)
+            #     Saves a single image prediction to disk as a png file
+            #     From model_large_context
+            #     Args:
+            #         Prediction: numpy array with prediction
+            #         output_path: str
+            #     Returns:
+            #         Null
+            #     """
+            #     print("output path: {}".format(output_path))
+            #     pdb.set_trace()
+            #
+            #     def pixels_to_patches(img, round=False, foreground_threshold=0.5, stride=conf.cnn_pred_size):
+            #         """
+            #         Smoothing an up sampled/upscaled img
+            #         """
+            #         res_img = np.zeros(img.shape)
+            #         for i in range(0, img.shape[0], stride):
+            #             for j in range(0, img.shape[1], stride):
+            #                 tmp = np.zeros((stride, stride))
+            #                 tmp[0: stride, 0: stride] = img[j: j + stride, i: i + stride]
+            #                 tmp[tmp < 0.5] = 0
+            #                 tmp[tmp >= 0.5] = 1
+            #                 res_img[j: j + stride, i: i + stride] = np.mean(tmp)
+            #
+            #                 # res_img[j : j + stride, i : i + stride] = np.mean(img[j : j + stride, i : i + stride])
+            #                 if round:
+            #                     if res_img[j, i] >= foreground_threshold:
+            #                         res_img[j: j + stride, i: i + stride] = 1
+            #                     else:
+            #                         res_img[j: j + stride, i: i + stride] = 0
+            #         return res_img
+            #
+            #     # Show per pixel probabilities
+            #     prediction_as_per_pixel_img = label_to_img(conf.test_image_size,
+            #                                                conf.test_image_size,
+            #                                                conf.cnn_pred_size,
+            #                                                conf.cnn_pred_size,
+            #                                                prediction)
+            #     # Show per patch probabilities
+            #     prediction_as_img = pixels_to_patches(prediction_as_per_pixel_img)
+            #
+            #     # Raw image
+            #     scipy.misc.imsave(output_path.replace("/raw/", "/high_res_raw/") + "_pixels.png",
+            #                       prediction_as_per_pixel_img)
+            #     scipy.misc.imsave(output_path + "_patches.png", prediction_as_img)
 
             # Save outputs to disk
             for i in range(1, conf.test_size+1):
@@ -295,6 +300,13 @@ def mainFunc(argv):
                 prediction = np.reshape(predictions[i-1,:], (conf.test_image_resize, conf.test_image_resize))
                 #save_prediction(prediction, output_path)
                 scipy.misc.imsave(output_path + ".png", prediction)
+
+            f, a = plt.subplots(2, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
+            for i in range(conf.examples_to_show):
+                a[0][i].imshow(np.reshape(test_patch_lvl[i,:,:], (conf.test_image_resize, conf.test_image_resize)))
+                im = a[1][i].imshow(np.reshape(predictions[i,:], (conf.test_image_resize, conf.test_image_resize)))
+            plt.colorbar(im)
+            plt.savefig('./autoencoder_prediction_{}.png'.format(tag))
 
             print("Finished saving autoencoder outputs to disk")
 

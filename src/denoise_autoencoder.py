@@ -118,7 +118,8 @@ def mainFunc(argv):
         train = np.append(train,
                   	  corrupt(targets_patch_lvl, float(np.random.choice(a = [0.01, 0.03], size=1, p=[0.5, 0.5]))),
                   	  axis=0)
-        print("Shape of training data: {}".format(train.shape))
+    print("Shape of training data: {}".format(train.shape))
+    n = train.shape[0]
 
     print("Initializing model")
     print("Input size: {}".format(int(conf.test_image_resize*conf.test_image_resize)))
@@ -163,10 +164,10 @@ def mainFunc(argv):
                 print("Time elapsed:    %.3fs" % (time.time() - start))
                 #logging.info("Time elapsed:    %.3fs" % (time.time() - start))
 
-            perm_idx = np.random.permutation(conf.train_size)
+            perm_idx = np.random.permutation(n)
             batch_index = 1
-            for step in range(int(conf.train_size / conf.batch_size)):
-                offset = (batch_index*conf.batch_size) % (conf.train_size - conf.batch_size)
+            for step in range(int(n / conf.batch_size)):
+                offset = (batch_index*conf.batch_size) % (n - conf.batch_size)
                 batch_indices = perm_idx[offset:(offset + conf.batch_size)]
 
                 batch_inputs = train[batch_indices,:,:].reshape((conf.batch_size, conf.test_image_resize**2))
@@ -199,8 +200,7 @@ def mainFunc(argv):
             data_eval = validation[:conf.batch_size,:,:]
             data_eval_fd = data_eval.reshape((conf.batch_size, conf.test_image_resize**2))
             targets_eval = targets_patch_lvl[:conf.batch_size,:,:]
-            targets_eval_fd = targets_eval.reshape((conf.batch_size, conf.test_image_resize**2))
-            feed_dict = model.make_inputs(data_eval_fd, targets_eval_fd)
+            feed_dict = model.make_inputs_predict(data_eval_fd)
             encode_decode = sess.run(model.y_pred, feed_dict=feed_dict)
             print("shape of predictions: {}".format(encode_decode.shape))
             # Compare original images with their reconstructions

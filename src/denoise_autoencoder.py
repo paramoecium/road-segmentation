@@ -112,12 +112,12 @@ def mainFunc(argv):
     del targets # Deleting original data to free space
 
     print("Training and eval data for DAE")
-    train = corrupt(targets_patch_lvl, float(np.random.choice(a = [0.01, 0.03], size=1, p=[0.9, 0.1])))
-    validation = corrupt(targets_patch_lvl, float(np.random.choice(a = [0.01, 0.03], size=1, p=[0.9, 0.1])))
+    train = corrupt(targets_patch_lvl, conf.corruption)
+    validation = corrupt(targets_patch_lvl, conf.corruption)
     targets = np.copy(targets_patch_lvl)
     for i in range(99):
         train = np.append(train,
-                  	      corrupt(targets_patch_lvl, float(np.random.choice(a = [0.01, 0.03], size=1, p=[0.9, 0.1]))),
+                  	      corrupt(targets_patch_lvl, conf.corruption),
                   	      axis=0)
         targets = np.append(targets,
                             targets_patch_lvl,
@@ -139,7 +139,8 @@ def mainFunc(argv):
                n_hidden_3=int(conf.test_image_resize*conf.test_image_resize/conf.ae_step/conf.ae_step/conf.ae_step),
                ##n_hidden_4=int(conf.test_image_resize*conf.test_image_resize/conf.ae_step/conf.ae_step/conf.ae_step/conf.ae_step),
                learning_rate=conf.learning_rate,
-               dropout=conf.dropout_train)
+               dropout=conf.dropout_train,
+               skip_arch=True)
 
     print("Starting TensorFlow session")
     with tf.Session(config=configProto) as sess:
@@ -313,7 +314,7 @@ def mainFunc(argv):
             f, a = plt.subplots(2, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
             for i in range(conf.examples_to_show):
                 a[0][i].imshow(np.reshape(test_patch_lvl[i,:,:], (conf.test_image_resize, conf.test_image_resize)))
-                im = a[1][i].imshow(np.reshape(predictions[i,:], (conf.test_image_resize, conf.test_image_resize)))
+                im = a[1][i].imshow(np.reshape(predictions[i], (conf.test_image_resize, conf.test_image_resize)))
             plt.colorbar(im)
             plt.savefig('./autoencoder_prediction_{}.png'.format(tag))
 

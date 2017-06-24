@@ -3,6 +3,8 @@ objects/
 results/
 tmp/
 data/
+predictions_training/
+test_set_images/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

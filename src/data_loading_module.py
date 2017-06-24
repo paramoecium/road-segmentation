@@ -10,11 +10,15 @@ import constants as const
 
 
 def extract_data(filename_base, num_images, num_of_transformations=6, patch_size=const.IMG_PATCH_SIZE,
-                 patch_stride=const.IMG_PATCH_STRIDE):
+                 patch_stride=const.IMG_PATCH_STRIDE, border_size=const.IMG_BORDER_SIZE,
+                 zero_center=True, autoencoder=False):
     """Extract patches from images."""
     imgs = []
     for i in range(1, num_images+1):
-        imageid = "satImage_%.3d" % i
+        if autoencoder:
+            imageid = "raw_test_" + str(i) + "_pixels"
+        else:
+            imageid = "satImage_%.3d" % i
         image_filename = filename_base + imageid + ".png"
         if os.path.isfile(image_filename):
             print('Loading ' + image_filename)
@@ -31,7 +35,7 @@ def extract_data(filename_base, num_images, num_of_transformations=6, patch_size
 
     data = []
     for i in range(num_images):
-        this_img_patches = pem.input_img_crop(imgs[i], patch_size, const.IMG_BORDER_SIZE, patch_stride,
+        this_img_patches = pem.input_img_crop(imgs[i], patch_size, border_size, patch_stride,
                                               num_of_transformations)
         data += this_img_patches
         print("\tcurrently have %d patches" % len(data))
@@ -43,9 +47,10 @@ def extract_data(filename_base, num_images, num_of_transformations=6, patch_size
     tmp = np.asarray(data)
     data = None  # We don't want the object in memory any more
     print("Cast successful")
-    patches = pem.zero_center(tmp)
-    print("Patches have been zero centered.")
-    return patches
+    if zero_center:
+        tmp = pem.zero_center(tmp)
+        print("Patches have been zero centered.")
+    return tmp
 
 
 def value_to_class(v):
@@ -84,7 +89,7 @@ def extract_labels(filename_base, num_images, num_of_transformations=6, patch_si
 
     # Convert to dense 1-hot representation.
     return labels.astype(np.float32)
-    
+
 
 def pixel_to_patch_labels(im, patch_size, stride):
     """Convert 1-hot pixel-wise labels to a low-resolution image of patch labels."""
@@ -97,7 +102,7 @@ def pixel_to_patch_labels(im, patch_size, stride):
         outH += 1
     for j in range(0, imgwidth - patch_size + 1, stride):
         outW += 1
-       
+
     output = np.zeros((outW, outH))
     idxI = 0
     for i in range(0, imgheight - patch_size + 1, stride):
@@ -108,7 +113,7 @@ def pixel_to_patch_labels(im, patch_size, stride):
             idxJ += 1
 
         idxI += 1
-        
+
     return output
 
 
@@ -129,7 +134,7 @@ def extract_label_images(filename_base, num_images, patch_size=const.IMG_PATCH_S
     num_images = len(gt_imgs)
     print('Extracting patches...')
     gt_patches = [pixel_to_patch_labels(gt_imgs[i], patch_size, patch_stride) for i in range(num_images)]
-    
+
     return gt_patches
 
 

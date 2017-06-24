@@ -115,9 +115,9 @@ def mainFunc(argv):
     train = corrupt(targets_patch_lvl, float(np.random.choice(a = [0.01, 0.03], size=1, p=[0.5, 0.5])))
     validation = corrupt(targets_patch_lvl, float(np.random.choice(a = [0.01, 0.03], size=1, p=[0.5, 0.5])))
     for i in range(99):
-        np.append(train,
-                  corrupt(targets_patch_lvl, float(np.random.choice(a = [0.01, 0.03], size=1, p=[0.5, 0.5])))
-                  axis=0)
+        train = np.append(train,
+                  	  corrupt(targets_patch_lvl, float(np.random.choice(a = [0.01, 0.03], size=1, p=[0.5, 0.5]))),
+                  	  axis=0)
         print("Shape of training data: {}".format(train.shape))
 
     print("Initializing model")

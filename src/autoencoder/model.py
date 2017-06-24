@@ -14,7 +14,8 @@ class ae():
                  n_hidden_3,
                  ##n_hidden_4,
                  learning_rate,
-                 dropout=1.0):
+                 dropout=1.0,
+                 skip_arch=False):
 
         # Network Parameters
         self.n_hidden_1 = n_hidden_1
@@ -25,6 +26,7 @@ class ae():
 
         self.dropout = dropout
         self.learning_rate = learning_rate
+        self.skip_arch = skip_arch
 
         self._make_graph()
 
@@ -34,9 +36,12 @@ class ae():
         self._init_placeholders()
         self._init_network_params()
 
-
         self._init_encoder()
-        self._init_decoder()
+        if self.skip_arch:
+            self._init_encoder_skip_arch()
+        else:
+            self._init_decoder()
+
         self._init_optimizer()
         self._init_summary()
 
@@ -155,6 +160,16 @@ class ae():
             # self.layer_8 = tf.nn.dropout(tf.sigmoid(tf.add(tf.matmul(self.layer_7, self.weights['decoder_h4']),
             #                                         self.biases['decoder_b4'])), keep_prob=self.dropout)
 
+    def _init_encoder_skip_arch(self):
+        with tf.variable_scope("decoder") as scope:
+            self.layer_5 = tf.nn.dropout(tf.sigmoid(tf.add(self.layer_2, tf.add(tf.matmul(self.layer_3, self.weights['decoder_h1']), self.biases['decoder_b1']))),
+                                         keep_prob=self.dropout)
+
+            self.layer_6 = tf.nn.dropout(tf.sigmoid(tf.add(self.layer_1, tf.add(tf.matmul(self.layer_5, self.weights['decoder_h2']), self.biases['decoder_b2']))),
+                                         keep_prob=self.dropout)
+
+            self.layer_7 = tf.nn.dropout(tf.sigmoid(tf.add(self.x, tf.add(tf.matmul(self.layer_6, self.weights['decoder_h3']), self.biases['decoder_b3']))),
+                                         keep_prob=self.dropout)
 
     def _init_optimizer(self):
         # Prediction

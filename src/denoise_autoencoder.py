@@ -112,17 +112,18 @@ def mainFunc(argv):
     del targets # Deleting original data to free space
 
     print("Training and eval data for DAE")
-    train = corrupt(targets_patch_lvl, float(np.random.choice(a = [0.01, 0.03], size=1, p=[0.5, 0.5])))
-    validation = corrupt(targets_patch_lvl, float(np.random.choice(a = [0.01, 0.03], size=1, p=[0.5, 0.5])))
+    train = corrupt(targets_patch_lvl, float(np.random.choice(a = [0.01, 0.03], size=1, p=[0.9, 0.1])))
+    validation = corrupt(targets_patch_lvl, float(np.random.choice(a = [0.01, 0.03], size=1, p=[0.9, 0.1])))
+    targets = np.copy(targets_patch_lvl)
     for i in range(99):
         train = np.append(train,
-                  	      corrupt(targets_patch_lvl, float(np.random.choice(a = [0.01, 0.03], size=1, p=[0.5, 0.5]))),
+                  	      corrupt(targets_patch_lvl, float(np.random.choice(a = [0.01, 0.03], size=1, p=[0.9, 0.1]))),
                   	      axis=0)
-        targets_patch_lvl = np.append(targets_patch_lvl,
-                                      targets_patch_lvl,
-                                      axis=0)
+        targets = np.append(targets,
+                            targets_patch_lvl,
+                            axis=0)
     print("Shape of training data: {}".format(train.shape))
-    print("Shape of targets data: {}".format(targets_patch_lvl.shape))
+    print("Shape of targets data: {}".format(targets.shape))
     n = train.shape[0]
 
     print("Initializing model")
@@ -175,7 +176,7 @@ def mainFunc(argv):
                 batch_indices = perm_idx[offset:(offset + conf.batch_size)]
 
                 batch_inputs = train[batch_indices,:,:].reshape((conf.batch_size, conf.test_image_resize**2))
-                batch_targets = targets_patch_lvl[batch_indices,:,:].reshape((conf.batch_size, conf.test_image_resize**2))
+                batch_targets = targets[batch_indices,:,:].reshape((conf.batch_size, conf.test_image_resize**2))
 
                 ##print("shape of batch inputs: {0} and outputs: {1}".format(batch_inputs.shape, batch_targets.shape))
 
@@ -203,7 +204,7 @@ def mainFunc(argv):
             # One batch for eval
             data_eval = validation[:conf.batch_size,:,:]
             data_eval_fd = data_eval.reshape((conf.batch_size, conf.test_image_resize**2))
-            targets_eval = targets_patch_lvl[:conf.batch_size,:,:]
+            targets_eval = targets[:conf.batch_size,:,:]
             feed_dict = model.make_inputs_predict(data_eval_fd)
             encode_decode = sess.run(model.y_pred, feed_dict=feed_dict)
             print("shape of predictions: {}".format(encode_decode.shape))
@@ -215,6 +216,10 @@ def mainFunc(argv):
                 im = a[2][i].imshow(np.reshape(encode_decode[i], (conf.test_image_resize, conf.test_image_resize)))
             plt.colorbar(im)
             plt.savefig('./autoencoder_eval_{}.png'.format(tag))
+
+        print("Deleting train and targets objects")
+        del train
+        del targets
 
         if conf.run_on_test_set:
             print("DAE on the predictions")

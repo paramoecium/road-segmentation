@@ -114,7 +114,7 @@ def mainFunc(argv):
     train = corrupt(targets_patch_lvl, conf.corruption)
     validation = corrupt(validation, conf.corruption)
     targets = np.copy(targets_patch_lvl)
-    for i in range(99):
+    for i in range(1):
         train = np.append(train,
                   	      corrupt(targets_patch_lvl, conf.corruption),
                   	      axis=0)
@@ -152,11 +152,8 @@ def mainFunc(argv):
 
         print("Starting training")
         for i in range(conf.num_epochs):
-            if i % 10 == 0:
-                print("Training epoch {}".format(i))
-                #logging.info("Training epoch {}".format(i))
-                print("Time elapsed:    %.3fs" % (time.time() - start))
-                #logging.info("Time elapsed:    %.3fs" % (time.time() - start))
+            print("Training epoch {}".format(i))
+            print("Time elapsed:    %.3fs" % (time.time() - start))
 
             perm_idx = np.random.permutation(n)
             batch_index = 1

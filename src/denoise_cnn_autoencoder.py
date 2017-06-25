@@ -104,8 +104,9 @@ def mainFunc(argv):
     #                                       (conf.patch_size, conf.patch_size),
     #                                       order=0, preserve_range=True)
 
-    validation = np.copy(targets_patch_lvl[:conf.val_size,:,:])
-    targets_patch_lvl = np.copy(targets_patch_lvl[conf.val_size:,:,:])
+    patches_per_image_train = conf.train_image_size // conf.patch_size
+    validation = np.copy(targets_patch_lvl[:conf.val_size*patches_per_image_train,:,:])
+    targets_patch_lvl = np.copy(targets_patch_lvl[conf.val_size*conf.patch_size:,:,:])
     print("New shape of each image: {}".format(targets_patch_lvl.shape))
 
     del targets # Deleting original data to free space
@@ -125,17 +126,11 @@ def mainFunc(argv):
     print("Shape of targets data: {}".format(targets.shape))
     n = train.shape[0]
 
-<<<<<<< HEAD
+    print("Initializing CNN denoising autoencoder")
     model = cnn_ae(conf.patch_size**2, ## dim of the inputs
                    n_filters=[1, 10, 10, 10],
                    filter_sizes=[5, 5, 3, 3],
                    learning_rate=0.0001)
-=======
-    model = cnn_ae(conf.test_image_resize**2, ## dim of the inputs
-                   n_filters=[1, 10, 10, 10, 10, 10],
-                   filter_sizes=[5, 5, 5, 5, 3, 3],
-                   learning_rate=0.0001):
->>>>>>> parent of 726682a... Merge branch 'cnn_autoencoder' of https://github.com/paramoecium/road-segmentation into cnn_autoencoder
 
     print("Starting TensorFlow session")
     with tf.Session(config=configProto) as sess:
@@ -192,21 +187,20 @@ def mainFunc(argv):
             print("Visualising encoder results and true images from train set")
             # Applying encode and decode over test set
             # One batch for eval
-<<<<<<< HEAD
-            data_eval_fd = validation.reshape((conf.val_size, conf.patch_size**2))
-=======
-            data_eval_fd = validation.reshape((conf.batch_size, conf.test_image_resize**2))
->>>>>>> parent of 726682a... Merge branch 'cnn_autoencoder' of https://github.com/paramoecium/road-segmentation into cnn_autoencoder
-            targets_eval = targets[:conf.val_size,:,:]
+            data_eval_fd = validation.reshape((conf.val_size*patches_per_image_train, conf.patch_size**2))
+            targets_eval = targets[:conf.val_size*patches_per_image_train,:,:]
             feed_dict = model.make_inputs_predict(data_eval_fd)
             encode_decode = sess.run(model.y_pred, feed_dict=feed_dict) ## predictions from model are [batch_size, dim, dim, n_channels]
             print("shape of predictions: {}".format(encode_decode.shape))
             # Compare original images with their reconstructions
             f, a = plt.subplots(3, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
             for i in range(conf.examples_to_show):
-                a[0][i].imshow(np.reshape(validation[i,:,:], (conf.patch_size, conf.patch_size)))
-                a[1][i].imshow(np.reshape(targets_eval[i,:,:], (conf.patch_size, conf.patch_size)))
-                im = a[2][i].imshow(np.reshape(encode_decode[i,:,:,:], (conf.patch_size, conf.patch_size)))
+                a[0][i].imshow(np.reshape(validation[i*patches_per_image_train:((i+1)*patches_per_image_train),:,:],
+                                          (conf.train_image_size, conf.train_image_size)))
+                a[1][i].imshow(np.reshape(targets_eval[i*patches_per_image_train:((i+1)*patches_per_image_train),:,:],
+                                          (conf.train_image_size, conf.train_image_size)))
+                im = a[2][i].imshow(np.reshape(encode_decode[i*patches_per_image_train:((i+1)*patches_per_image_train),:,:,:],
+                                               (conf.train_image_size, conf.train_image_size)))
             plt.colorbar(im)
             plt.savefig('./cnn_autoencoder_eval_{}.png'.format(tag))
 
@@ -229,88 +223,36 @@ def mainFunc(argv):
                                     patch_stride=conf.patch_size, # train images are of size 400 for test this needs to be changed
                                     border_size=0,
                                     zero_center=False,
-                                    autoencoder=True)
-
+                                    autoencoder=True) ## uses different path to load data
             print("Shape of test set: {}".format(test.shape))
-            # resize the images
-            print("Resizing test images so that patches from CNN are now pixels")
-            test_patch_lvl = np.zeros((test.shape[0], conf.patch_size, conf.patch_size))
-            # for i in range(test.shape[0]):
-            #     test_patch_lvl[i,:,:] = resize(test[i,0,:,:],
-            #                                    (conf.test_image_resize, conf.test_image_resize),
-            #                                    order=0, preserve_range=True)
 
-            print("New shape of each image: {}".format(test_patch_lvl.shape))
-            del test
-
-            batch_inputs = test_patch_lvl.reshape((conf.test_size, conf.patch_size**2))
-            feed_dict = model.make_inputs_predict(batch_inputs)
-            predictions = sess.run(model.y_pred, feed_dict) ## numpy array (50, 76, 76, 1)
-            print("shape of predictions: {}".format(predictions.shape))
-
-            #     Saves a single image prediction to disk as a png file
-            #     From model_large_context
-            #     Args:
-            #         Prediction: numpy array with prediction
-            #         output_path: str
-            #     Returns:
-            #         Null
-            #     """
-            #     print("output path: {}".format(output_path))
-            #     pdb.set_trace()
-            #
-            #     def pixels_to_patches(img, round=False, foreground_threshold=0.5, stride=conf.cnn_pred_size):
-            #         """
-            #         Smoothing an up sampled/upscaled img
-            #         """
-            #         res_img = np.zeros(img.shape)
-            #         for i in range(0, img.shape[0], stride):
-            #             for j in range(0, img.shape[1], stride):
-            #                 tmp = np.zeros((stride, stride))
-            #                 tmp[0: stride, 0: stride] = img[j: j + stride, i: i + stride]
-            #                 tmp[tmp < 0.5] = 0
-            #                 tmp[tmp >= 0.5] = 1
-            #                 res_img[j: j + stride, i: i + stride] = np.mean(tmp)
-            #
-            #                 # res_img[j : j + stride, i : i + stride] = np.mean(img[j : j + stride, i : i + stride])
-            #                 if round:
-            #                     if res_img[j, i] >= foreground_threshold:
-            #                         res_img[j: j + stride, i: i + stride] = 1
-            #                     else:
-            #                         res_img[j: j + stride, i: i + stride] = 0
-            #         return res_img
-            #
-            #     # Show per pixel probabilities
-            #     prediction_as_per_pixel_img = label_to_img(conf.test_image_size,
-            #                                                conf.test_image_size,
-            #                                                conf.cnn_pred_size,
-            #                                                conf.cnn_pred_size,
-            #                                                prediction)
-            #     # Show per patch probabilities
-            #     prediction_as_img = pixels_to_patches(prediction_as_per_pixel_img)
-            #
-            #     # Raw image
-            #     scipy.misc.imsave(output_path.replace("/raw/", "/high_res_raw/") + "_pixels.png",
-            #                       prediction_as_per_pixel_img)
-            #     scipy.misc.imsave(output_path + "_patches.png", prediction_as_img)
+            # feeing in one image at a time
+            predictions = []
+            patches_per_image_test = conf.test_image_size // conf.patch_size
+            inputs = test.reshape((test.shape[0], conf.patch_size**2))
+            for i in range(conf.test_size):
+                batch_inputs = inputs[i*patches_per_image_test:((i+1)*patches_per_image_test),:]
+                feed_dict = model.make_inputs_predict(batch_inputs)
+                prediction = sess.run(model.y_pred, feed_dict) ## numpy array (50, 76, 76, 1)
+                predictions.append(prediction)
 
             # Save outputs to disk
-            for i in range(1, conf.test_size+1):
-                print("Test img: " + str(i))
-                img_name = "cnn_ae_test_" + str(i)
+            for i in range(conf.test_size):
+                print("Test img: " + str(i+1))
+                img_name = "cnn_ae_test_" + str(i+1)
                 output_path = "../results/CNN_Autoencoder_Output/tmp/" + img_name
-                prediction = np.reshape(predictions[i-1,:], (conf.patch_size, conf.patch_size))
-                #save_prediction(prediction, output_path)
+                prediction = np.reshape(predictions[i], (conf.test_image_size, conf.test_image_size))
                 scipy.misc.imsave(output_path + ".png", prediction)
 
             f, a = plt.subplots(2, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
             for i in range(conf.examples_to_show):
-                a[0][i].imshow(np.reshape(test_patch_lvl[i,:,:], (conf.patch_size, conf.patch_size)))
-                im = a[1][i].imshow(np.reshape(predictions[i,:,:,:], (conf.patch_size, conf.patch_size)))
+                a[0][i].imshow(np.reshape(test_patch_lvl[i*patches_per_image_test:((i+1)*patches_per_image_test),:,:],
+                                          (conf.test_image_size, conf.test_image_size)))
+                im = a[1][i].imshow(np.reshape(predictions[i], (conf.test_image_size, conf.test_image_size)))
             plt.colorbar(im)
             plt.savefig('./cnn_autoencoder_prediction_{}.png'.format(tag))
 
-            print("Finished saving autoencoder outputs to disk")
+            print("Finished saving cnn autoencoder outputs to disk")
 
 if __name__ == "__main__":
     #logging.basicConfig(filename='autoencoder.log', level=logging.DEBUG)

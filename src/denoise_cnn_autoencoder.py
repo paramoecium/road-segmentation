@@ -108,7 +108,7 @@ def mainFunc(argv):
 
     print("Shape of training data: {}".format(train.shape)) # (62420, 1, 16, 16)
     print("Shape of targets data: {}".format(targets.shape)) # (62420, 1, 16, 16)
-    print("Shape of validation data: {}".format(validation.shape))
+    print("Shape of validation data: {}".format(validation.shape)) # (3125, 1, 16, 16)
 
     print("Initializing CNN denoising autoencoder")
     model = cnn_ae(conf.patch_size**2, ## dim of the inputs
@@ -166,17 +166,14 @@ def mainFunc(argv):
             print("Visualising encoder results and true images from train set")
             data_eval_fd = validation.reshape((conf.val_size*patches_per_image_train, conf.patch_size**2))
             feed_dict = model.make_inputs_predict(data_eval_fd)
-            targets_eval = targets[:conf.val_size*patches_per_image_train,0,:,:]
-            encode_decode = sess.run(model.y_pred, feed_dict=feed_dict) ## predictions from model are [batch_size, dim, dim, n_channels]
+            encode_decode = sess.run(model.y_pred, feed_dict=feed_dict) ## predictions from model are [batch_size, dim, dim, n_channels] i.e. (3125, 16, 16, 1)
             print("shape of predictions: {}".format(encode_decode.shape))
             # Compare original images with their reconstructions
-            f, a = plt.subplots(3, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
+            f, a = plt.subplots(2, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
             for i in range(conf.examples_to_show):
-                a[0][i].imshow(np.reshape(validation[i*patches_per_image_train:((i+1)*patches_per_image_train),:,:],
+                a[0][i].imshow(np.reshape(validation[i*patches_per_image_train:((i+1)*patches_per_image_train),0,:,:],
                                           (conf.train_image_size, conf.train_image_size)))
-                a[1][i].imshow(np.reshape(targets_eval[i*patches_per_image_train:((i+1)*patches_per_image_train),:,:],
-                                          (conf.train_image_size, conf.train_image_size)))
-                im = a[2][i].imshow(np.reshape(encode_decode[i*patches_per_image_train:((i+1)*patches_per_image_train),:,:,:],
+                im = a[1][i].imshow(np.reshape(encode_decode[i*patches_per_image_train:((i+1)*patches_per_image_train),:,:,0],
                                                (conf.train_image_size, conf.train_image_size)))
             plt.colorbar(im)
             plt.savefig('./cnn_autoencoder_eval_{}.png'.format(tag))

@@ -5,6 +5,9 @@ mkdir -p data/test_set/downsampled
 mkdir -p data/training/groundtruth/downsampled
 mkdir -p data/training/images/downsampled
 
+# Creates log directories for checkpoints
+mkdir -p logs
+
 # Create output directories
 mkdir -p results/CNN_Output/test/raw
 mkdir -p results/CNN_Output/test/high_res_raw
@@ -16,6 +19,11 @@ mkdir -p results/CNN_Output_Baseline/training/raw
 
 mkdir -p results/Autoencoder_Output/raw
 mkdir -p results/Autoencoder_Output/high_res_raw
+mkdir -p logs/Autoencoder
+
+mkdir -p results/CNN_Autoencoder_Output/raw
+mkdir -p results/CNN_Autoencoder_Output/high_res_raw
+mkdir -p logs/CNN_Autoencoder
 
 # Create tmp directories to hold TensorFlow results
 mkdir -p tmp

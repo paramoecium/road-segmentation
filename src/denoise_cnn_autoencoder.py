@@ -98,14 +98,11 @@ def mainFunc(argv):
     # Hence the denoising with be on made on images of size 76x76. Hence the training of the denoising autoencoder
     # Is made on the training data (size 400x400) resized (spline interpolation) to 76x76
     print("Resizing ground truth images so that patches from CNN are now pixels")
-    targets_patch_lvl = np.zeros((targets.shape[0], conf.test_image_resize, conf.test_image_resize))
-    for i in range(targets.shape[0]):
-        targets_patch_lvl[i,:,:] = resize(targets[i,0,:,:],
-                                          (conf.test_image_resize, conf.test_image_resize),
-                                          order=0, preserve_range=True)
-        # targets_patch_lvl[i,:,:] = img_to_label(conf.test_image_resize, conf.test_image_resize,
-        #                                         conf.cnn_pred_size, conf.cnn_pred_size,
-        #                                         targets[i,0,:,:])
+    targets_patch_lvl = np.zeros((targets.shape[0], conf.patch_size, conf.patch_size))
+    # for i in range(targets.shape[0]):
+    #     targets_patch_lvl[i,:,:] = resize(targets[i,0,:,:],
+    #                                       (conf.patch_size, conf.patch_size),
+    #                                       order=0, preserve_range=True)
 
     validation = np.copy(targets_patch_lvl[:conf.val_size,:,:])
     targets_patch_lvl = np.copy(targets_patch_lvl[conf.val_size:,:,:])
@@ -128,7 +125,7 @@ def mainFunc(argv):
     print("Shape of targets data: {}".format(targets.shape))
     n = train.shape[0]
 
-    model = cnn_ae(conf.test_image_resize**2, ## dim of the inputs
+    model = cnn_ae(conf.patch_size**2, ## dim of the inputs
                    n_filters=[1, 10, 10, 10],
                    filter_sizes=[5, 5, 3, 3],
                    learning_rate=0.0001)
@@ -167,8 +164,8 @@ def mainFunc(argv):
                 offset = (batch_index*conf.batch_size) % (n - conf.batch_size)
                 batch_indices = perm_idx[offset:(offset + conf.batch_size)]
 
-                batch_inputs = train[batch_indices,:,:].reshape((conf.batch_size, conf.test_image_resize**2))
-                batch_targets = targets[batch_indices,:,:].reshape((conf.batch_size, conf.test_image_resize**2))
+                batch_inputs = train[batch_indices,:,:].reshape((conf.batch_size, conf.patch_size**2))
+                batch_targets = targets[batch_indices,:,:].reshape((conf.batch_size, conf.patch_size**2))
 
                 feed_dict = model.make_inputs(batch_inputs, batch_targets)
                 if global_step % conf.validation_summary_frequency == 0:
@@ -191,7 +188,7 @@ def mainFunc(argv):
             print("Visualising encoder results and true images from train set")
             # Applying encode and decode over test set
             # One batch for eval
-            data_eval_fd = validation.reshape((conf.val_size, conf.test_image_resize**2))
+            data_eval_fd = validation.reshape((conf.val_size, conf.patch_size**2))
             targets_eval = targets[:conf.val_size,:,:]
             feed_dict = model.make_inputs_predict(data_eval_fd)
             encode_decode = sess.run(model.y_pred, feed_dict=feed_dict) ## predictions from model are [batch_size, dim, dim, n_channels]
@@ -199,9 +196,9 @@ def mainFunc(argv):
             # Compare original images with their reconstructions
             f, a = plt.subplots(3, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
             for i in range(conf.examples_to_show):
-                a[0][i].imshow(np.reshape(validation[i,:,:], (conf.test_image_resize, conf.test_image_resize)))
-                a[1][i].imshow(np.reshape(targets_eval[i,:,:], (conf.test_image_resize, conf.test_image_resize)))
-                im = a[2][i].imshow(np.reshape(encode_decode[i,:,:,:], (conf.test_image_resize, conf.test_image_resize)))
+                a[0][i].imshow(np.reshape(validation[i,:,:], (conf.patch_size, conf.patch_size)))
+                a[1][i].imshow(np.reshape(targets_eval[i,:,:], (conf.patch_size, conf.patch_size)))
+                im = a[2][i].imshow(np.reshape(encode_decode[i,:,:,:], (conf.patch_size, conf.patch_size)))
             plt.colorbar(im)
             plt.savefig('./cnn_autoencoder_eval_{}.png'.format(tag))
 
@@ -220,8 +217,8 @@ def mainFunc(argv):
             test = dlm.extract_data(prediction_test_dir,
                                     num_images=conf.test_size,
                                     num_of_transformations=0,
-                                    patch_size=conf.test_image_size, # train images are of size 400 for test this needs to be changed
-                                    patch_stride=conf.test_image_size, # train images are of size 400 for test this needs to be changed
+                                    patch_size=conf.patch_size, # train images are of size 400 for test this needs to be changed
+                                    patch_stride=conf.patch_size, # train images are of size 400 for test this needs to be changed
                                     border_size=0,
                                     zero_center=False,
                                     autoencoder=True)
@@ -229,16 +226,16 @@ def mainFunc(argv):
             print("Shape of test set: {}".format(test.shape))
             # resize the images
             print("Resizing test images so that patches from CNN are now pixels")
-            test_patch_lvl = np.zeros((test.shape[0], conf.test_image_resize, conf.test_image_resize))
-            for i in range(test.shape[0]):
-                test_patch_lvl[i,:,:] = resize(test[i,0,:,:],
-                                               (conf.test_image_resize, conf.test_image_resize),
-                                               order=0, preserve_range=True)
+            test_patch_lvl = np.zeros((test.shape[0], conf.patch_size, conf.patch_size))
+            # for i in range(test.shape[0]):
+            #     test_patch_lvl[i,:,:] = resize(test[i,0,:,:],
+            #                                    (conf.test_image_resize, conf.test_image_resize),
+            #                                    order=0, preserve_range=True)
 
             print("New shape of each image: {}".format(test_patch_lvl.shape))
             del test
 
-            batch_inputs = test_patch_lvl.reshape((conf.test_size, conf.test_image_resize**2))
+            batch_inputs = test_patch_lvl.reshape((conf.test_size, conf.patch_size**2))
             feed_dict = model.make_inputs_predict(batch_inputs)
             predictions = sess.run(model.y_pred, feed_dict) ## numpy array (50, 76, 76, 1)
             print("shape of predictions: {}".format(predictions.shape))
@@ -294,14 +291,14 @@ def mainFunc(argv):
                 print("Test img: " + str(i))
                 img_name = "cnn_ae_test_" + str(i)
                 output_path = "../results/CNN_Autoencoder_Output/tmp/" + img_name
-                prediction = np.reshape(predictions[i-1,:], (conf.test_image_resize, conf.test_image_resize))
+                prediction = np.reshape(predictions[i-1,:], (conf.patch_size, conf.patch_size))
                 #save_prediction(prediction, output_path)
                 scipy.misc.imsave(output_path + ".png", prediction)
 
             f, a = plt.subplots(2, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
             for i in range(conf.examples_to_show):
-                a[0][i].imshow(np.reshape(test_patch_lvl[i,:,:], (conf.test_image_resize, conf.test_image_resize)))
-                im = a[1][i].imshow(np.reshape(predictions[i,:,:,:], (conf.test_image_resize, conf.test_image_resize)))
+                a[0][i].imshow(np.reshape(test_patch_lvl[i,:,:], (conf.patch_size, conf.patch_size)))
+                im = a[1][i].imshow(np.reshape(predictions[i,:,:,:], (conf.patch_size, conf.patch_size)))
             plt.colorbar(im)
             plt.savefig('./cnn_autoencoder_prediction_{}.png'.format(tag))
 

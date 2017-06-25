@@ -13,6 +13,7 @@ class Config():
     test_image_resize = test_image_size // cnn_pred_size # 76
     train_size = 100 # train data set size
     test_size = 50 # test data set size
+    patch_size = 16
     dropout_train = 1.0
     learning_rate = 0.0001
     corruption = 0.01

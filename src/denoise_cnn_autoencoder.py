@@ -88,7 +88,7 @@ def mainFunc(argv):
     train_data_filename = "../data/training/groundtruth/"
     targets = dlm.extract_data(train_data_filename,
                                num_images=conf.train_size,
-                               num_of_transformations=1,
+                               num_of_transformations=0,
                                patch_size=conf.patch_size, # train images are of size 400 for test this needs to be changed
                                patch_stride=conf.patch_size, # train images are of size 400 for test this needs to be changed
                                border_size=0,
@@ -106,9 +106,9 @@ def mainFunc(argv):
     targets = np.copy(targets_patch_lvl)
     del targets_patch_lvl
 
-    print("Shape of training data: {}".format(train.shape))
-    print("Shape of targets data: {}".format(targets.shape))
-    n = train.shape[0]
+    print("Shape of training data: {}".format(train.shape)) # (62420, 1, 16, 16)
+    print("Shape of targets data: {}".format(targets.shape)) # (62420, 1, 16, 16)
+    print("Shape of validation data: {}".format(validation.shape))
 
     print("Initializing CNN denoising autoencoder")
     model = cnn_ae(conf.patch_size**2, ## dim of the inputs
@@ -141,14 +141,15 @@ def mainFunc(argv):
             print("Training epoch {}".format(i))
             print("Time elapsed:    %.3fs" % (time.time() - start))
 
+            n = train.shape[0]
             perm_idx = np.random.permutation(n)
             batch_index = 1
             for step in range(int(n / conf.batch_size)):
                 offset = (batch_index*conf.batch_size) % (n - conf.batch_size)
                 batch_indices = perm_idx[offset:(offset + conf.batch_size)]
 
-                batch_inputs = train[batch_indices,:,:].reshape((conf.batch_size, conf.patch_size**2))
-                batch_targets = targets[batch_indices,:,:].reshape((conf.batch_size, conf.patch_size**2))
+                batch_inputs = train[batch_indices,0,:,:].reshape((conf.batch_size, conf.patch_size**2))
+                batch_targets = targets[batch_indices,0,:,:].reshape((conf.batch_size, conf.patch_size**2))
 
                 feed_dict = model.make_inputs(batch_inputs, batch_targets)
 
@@ -164,19 +165,17 @@ def mainFunc(argv):
         if conf.visualise_training:
             print("Visualising encoder results and true images from train set")
             data_eval_fd = validation.reshape((conf.val_size*patches_per_image_train, conf.patch_size**2))
-            targets_eval = targets[:conf.val_size*patches_per_image_train,:,:]
             feed_dict = model.make_inputs_predict(data_eval_fd)
+            targets_eval = targets[:conf.val_size*patches_per_image_train,0,:,:]
             encode_decode = sess.run(model.y_pred, feed_dict=feed_dict) ## predictions from model are [batch_size, dim, dim, n_channels]
             print("shape of predictions: {}".format(encode_decode.shape))
             # Compare original images with their reconstructions
             f, a = plt.subplots(3, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
             for i in range(conf.examples_to_show):
                 a[0][i].imshow(np.reshape(validation[i*patches_per_image_train:((i+1)*patches_per_image_train),:,:],
-                                          (conf.train_image_size, conf.train_image_size),
-                                          order='F'))
+                                          (conf.train_image_size, conf.train_image_size)))
                 a[1][i].imshow(np.reshape(targets_eval[i*patches_per_image_train:((i+1)*patches_per_image_train),:,:],
-                                          (conf.train_image_size, conf.train_image_size)),
-                                          order='F')
+                                          (conf.train_image_size, conf.train_image_size)))
                 im = a[2][i].imshow(np.reshape(encode_decode[i*patches_per_image_train:((i+1)*patches_per_image_train),:,:,:],
                                                (conf.train_image_size, conf.train_image_size)))
             plt.colorbar(im)

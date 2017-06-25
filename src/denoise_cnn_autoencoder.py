@@ -125,10 +125,17 @@ def mainFunc(argv):
     print("Shape of targets data: {}".format(targets.shape))
     n = train.shape[0]
 
+<<<<<<< HEAD
     model = cnn_ae(conf.patch_size**2, ## dim of the inputs
                    n_filters=[1, 10, 10, 10],
                    filter_sizes=[5, 5, 3, 3],
                    learning_rate=0.0001)
+=======
+    model = cnn_ae(conf.test_image_resize**2, ## dim of the inputs
+                   n_filters=[1, 10, 10, 10, 10, 10],
+                   filter_sizes=[5, 5, 5, 5, 3, 3],
+                   learning_rate=0.0001):
+>>>>>>> parent of 726682a... Merge branch 'cnn_autoencoder' of https://github.com/paramoecium/road-segmentation into cnn_autoencoder
 
     print("Starting TensorFlow session")
     with tf.Session(config=configProto) as sess:
@@ -185,7 +192,11 @@ def mainFunc(argv):
             print("Visualising encoder results and true images from train set")
             # Applying encode and decode over test set
             # One batch for eval
+<<<<<<< HEAD
             data_eval_fd = validation.reshape((conf.val_size, conf.patch_size**2))
+=======
+            data_eval_fd = validation.reshape((conf.batch_size, conf.test_image_resize**2))
+>>>>>>> parent of 726682a... Merge branch 'cnn_autoencoder' of https://github.com/paramoecium/road-segmentation into cnn_autoencoder
             targets_eval = targets[:conf.val_size,:,:]
             feed_dict = model.make_inputs_predict(data_eval_fd)
             encode_decode = sess.run(model.y_pred, feed_dict=feed_dict) ## predictions from model are [batch_size, dim, dim, n_channels]

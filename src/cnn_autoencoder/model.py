@@ -16,6 +16,7 @@ class cnn_ae():
         # Network Parameters
         self.n_input = n_input
         self.n_filters = n_filters
+        self.layers = len(n_filters)-1
         self.filter_sizes = filter_sizes
         self.learning_rate = learning_rate
 
@@ -79,7 +80,7 @@ class cnn_ae():
                                 initializer=initializer,
                                 dtype=tf.float32)
             self.encoder.append(W)
-            output = tf.nn.relu(tf.add(tf.nn.conv2d(self.current_input, W, strides=[1, 2, 2, 1], padding='SAME'), b))
+            output = tf.add(tf.nn.conv2d(self.current_input, W, strides=[1, 2, 2, 1], padding='SAME'), b)
             print("shape of encoder outputs: {}".format(output.get_shape()))
             self.current_input = tf.sigmoid(output)
 
@@ -95,11 +96,11 @@ class cnn_ae():
                                 shape=[W.get_shape().as_list()[2]],
                                 initializer=initializer,
                                 dtype=tf.float32)
-            output = tf.nn.relu(tf.add(
+            output = tf.add(
                 tf.nn.conv2d_transpose(
                     self.current_input, W,
                     tf.stack([tf.shape(self.x)[0], shape[1], shape[2], shape[3]]),
-                    strides=[1, 2, 2, 1], padding='SAME'), b))
+                    strides=[1, 2, 2, 1], padding='SAME'), b)
             print("shape of decoder outputs: {}".format(output.get_shape()))
             self.current_input = tf.sigmoid(output)
 

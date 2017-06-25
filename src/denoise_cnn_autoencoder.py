@@ -88,7 +88,7 @@ def mainFunc(argv):
     train_data_filename = "../data/training/groundtruth/"
     targets = dlm.extract_data(train_data_filename,
                                num_images=conf.train_size,
-                               num_of_transformations=0,
+                               num_of_transformations=1,
                                patch_size=conf.patch_size, # train images are of size 400 for test this needs to be changed
                                patch_stride=conf.patch_size, # train images are of size 400 for test this needs to be changed
                                border_size=0,
@@ -97,30 +97,24 @@ def mainFunc(argv):
     patches_per_image_train = conf.train_image_size**2 // conf.patch_size**2
     validation = np.copy(targets[:conf.val_size*patches_per_image_train,:,:])
     targets_patch_lvl = np.copy(targets[conf.val_size*conf.patch_size:,:,:])
-    print("New shape of each image: {}".format(targets_patch_lvl.shape))
 
     del targets # Deleting original data to free space
 
-    print("Training and eval data for DAE")
+    print("Training and eval data for CNN DAE")
     train = corrupt(targets_patch_lvl, conf.corruption)
     validation = corrupt(validation, conf.corruption)
     targets = np.copy(targets_patch_lvl)
-    for i in range(1):
-        train = np.append(train,
-                  	      corrupt(targets_patch_lvl, conf.corruption),
-                  	      axis=0)
-        targets = np.append(targets,
-                            targets_patch_lvl,
-                            axis=0)
+    del targets_patch_lvl
+
     print("Shape of training data: {}".format(train.shape))
     print("Shape of targets data: {}".format(targets.shape))
     n = train.shape[0]
 
     print("Initializing CNN denoising autoencoder")
     model = cnn_ae(conf.patch_size**2, ## dim of the inputs
-                   n_filters=[1, 10, 10, 10],
-                   filter_sizes=[5, 5, 3, 3],
-                   learning_rate=0.0001)
+                   n_filters=[1, 16, 32, 64],
+                   filter_sizes=[7, 5, 3, 3],
+                   learning_rate=0.005)
 
     print("Starting TensorFlow session")
     with tf.Session(config=configProto) as sess:
@@ -157,16 +151,10 @@ def mainFunc(argv):
                 batch_targets = targets[batch_indices,:,:].reshape((conf.batch_size, conf.patch_size**2))
 
                 feed_dict = model.make_inputs(batch_inputs, batch_targets)
-                if global_step % conf.validation_summary_frequency == 0:
-                    pass
-                else:
-                    _, train_summary = sess.run([model.optimizer, model.summary_op], feed_dict)
-                    train_writer.add_summary(train_summary, global_step)
 
-                if global_step % conf.checkpoint_frequency == 0:
-                    # traing is quick, no need to save checkpoints for every checkpoint frequency
-                    # saver.save(sess, os.path.join(train_logfolderPath, "{}-{}-ep{}.ckpt".format(tag_string, timestamp, i)), global_step=global_step)
-                    pass
+                _, train_summary = sess.run([model.optimizer, model.summary_op], feed_dict)
+                train_writer.add_summary(train_summary, global_step)
+
                 global_step += 1
                 batch_index += 1
 
@@ -175,8 +163,6 @@ def mainFunc(argv):
 
         if conf.visualise_training:
             print("Visualising encoder results and true images from train set")
-            # Applying encode and decode over test set
-            # One batch for eval
             data_eval_fd = validation.reshape((conf.val_size*patches_per_image_train, conf.patch_size**2))
             targets_eval = targets[:conf.val_size*patches_per_image_train,:,:]
             feed_dict = model.make_inputs_predict(data_eval_fd)
@@ -186,9 +172,11 @@ def mainFunc(argv):
             f, a = plt.subplots(3, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
             for i in range(conf.examples_to_show):
                 a[0][i].imshow(np.reshape(validation[i*patches_per_image_train:((i+1)*patches_per_image_train),:,:],
-                                          (conf.train_image_size, conf.train_image_size)))
+                                          (conf.train_image_size, conf.train_image_size),
+                                          order='F'))
                 a[1][i].imshow(np.reshape(targets_eval[i*patches_per_image_train:((i+1)*patches_per_image_train),:,:],
-                                          (conf.train_image_size, conf.train_image_size)))
+                                          (conf.train_image_size, conf.train_image_size)),
+                                          order='F')
                 im = a[2][i].imshow(np.reshape(encode_decode[i*patches_per_image_train:((i+1)*patches_per_image_train),:,:,:],
                                                (conf.train_image_size, conf.train_image_size)))
             plt.colorbar(im)

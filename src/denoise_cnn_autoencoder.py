@@ -224,7 +224,7 @@ def mainFunc(argv):
                                     border_size=0,
                                     zero_center=False,
                                     autoencoder=True) ## uses different path to load data
-            print("Shape of test set: {}".format(test.shape))
+            print("Shape of test set: {}".format(test.shape)) ## (72200, 1, 16, 16)
 
             # feeing in one image at a time
             predictions = []
@@ -246,7 +246,7 @@ def mainFunc(argv):
 
             f, a = plt.subplots(2, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
             for i in range(conf.examples_to_show):
-                a[0][i].imshow(np.reshape(test_patch_lvl[i*patches_per_image_test:((i+1)*patches_per_image_test),:,:],
+                a[0][i].imshow(np.reshape(test[i*patches_per_image_test:((i+1)*patches_per_image_test),:,:,:],
                                           (conf.test_image_size, conf.test_image_size)))
                 im = a[1][i].imshow(np.reshape(predictions[i], (conf.test_image_size, conf.test_image_size)))
             plt.colorbar(im)

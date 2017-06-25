@@ -1,5 +1,5 @@
 class Config():
-    num_epochs = 10
+    num_epochs = 5
     validation_summary_frequency = 1000
     checkpoint_frequency = 1000
     batch_size = 32

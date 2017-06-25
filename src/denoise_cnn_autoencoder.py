@@ -88,12 +88,12 @@ def mainFunc(argv):
     train_data_filename = "../data/training/groundtruth/"
     targets = dlm.extract_data(train_data_filename,
                                num_images=conf.train_size,
-                               num_of_transformations=1,
+                               num_of_transformations=0,
                                patch_size=conf.patch_size, # train images are of size 400 for test this needs to be changed
                                patch_stride=conf.patch_size, # train images are of size 400 for test this needs to be changed
                                border_size=0,
                                zero_center=False)
-
+    print("shape of targets: {}".format(targets.shape))
     patches_per_image_train = conf.train_image_size**2 // conf.patch_size**2
     validation = np.copy(targets[:conf.val_size*patches_per_image_train,:,:])
     targets_patch_lvl = np.copy(targets[conf.val_size*conf.patch_size:,:,:])
@@ -175,8 +175,8 @@ def mainFunc(argv):
                                           (conf.train_image_size, conf.train_image_size),
                                           order='F'))
                 a[1][i].imshow(np.reshape(targets_eval[i*patches_per_image_train:((i+1)*patches_per_image_train),:,:],
-                                          (conf.train_image_size, conf.train_image_size)),
-                                          order='F')
+                                          (conf.train_image_size, conf.train_image_size),
+                                          order='F'))
                 im = a[2][i].imshow(np.reshape(encode_decode[i*patches_per_image_train:((i+1)*patches_per_image_train),:,:,:],
                                                (conf.train_image_size, conf.train_image_size)))
             plt.colorbar(im)

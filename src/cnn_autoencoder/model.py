@@ -9,8 +9,8 @@ class cnn_ae():
     """CNN Autoencoder class"""
     def __init__(self,
                  n_input, ## dim of the inputs
-                 n_filters=[1, 10, 10, 10, 10, 10],
-                 filter_sizes=[5, 5, 5, 5, 3, 3],
+                 n_filters=[1, 10, 10, 10],
+                 filter_sizes=[5, 5, 3, 3],
                  learning_rate=0.0001):
 
         # Network Parameters
@@ -81,7 +81,7 @@ class cnn_ae():
             self.encoder.append(W)
             output = tf.nn.relu(tf.add(tf.nn.conv2d(self.current_input, W, strides=[1, 2, 2, 1], padding='SAME'), b))
             print("shape of encoder outputs: {}".format(output.get_shape()))
-            self.current_input = output
+            self.current_input = tf.sigmoid(output)
 
     def _init_decoder(self):
         ## Uniform(-sqrt(3), sqrt(3)) has variance=1.
@@ -101,7 +101,7 @@ class cnn_ae():
                     tf.stack([tf.shape(self.x)[0], shape[1], shape[2], shape[3]]),
                     strides=[1, 2, 2, 1], padding='SAME'), b))
             print("shape of decoder outputs: {}".format(output.get_shape()))
-            self.current_input = output
+            self.current_input = tf.sigmoid(output)
 
     def _init_optimizer(self):
         # Prediction

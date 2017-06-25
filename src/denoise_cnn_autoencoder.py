@@ -94,19 +94,9 @@ def mainFunc(argv):
                                border_size=0,
                                zero_center=False)
 
-    # The output of the CNN is predictions of size 608x608, the prediction is made on patches of size 8x8.
-    # Hence the denoising with be on made on images of size 76x76. Hence the training of the denoising autoencoder
-    # Is made on the training data (size 400x400) resized (spline interpolation) to 76x76
-    print("Resizing ground truth images so that patches from CNN are now pixels")
-    targets_patch_lvl = np.zeros((targets.shape[0], conf.patch_size, conf.patch_size))
-    # for i in range(targets.shape[0]):
-    #     targets_patch_lvl[i,:,:] = resize(targets[i,0,:,:],
-    #                                       (conf.patch_size, conf.patch_size),
-    #                                       order=0, preserve_range=True)
-
     patches_per_image_train = conf.train_image_size**2 // conf.patch_size**2
-    validation = np.copy(targets_patch_lvl[:conf.val_size*patches_per_image_train,:,:])
-    targets_patch_lvl = np.copy(targets_patch_lvl[conf.val_size*conf.patch_size:,:,:])
+    validation = np.copy(targets[:conf.val_size*patches_per_image_train,:,:])
+    targets_patch_lvl = np.copy(targets[conf.val_size*conf.patch_size:,:,:])
     print("New shape of each image: {}".format(targets_patch_lvl.shape))
 
     del targets # Deleting original data to free space

@@ -104,7 +104,7 @@ def mainFunc(argv):
     #                                       (conf.patch_size, conf.patch_size),
     #                                       order=0, preserve_range=True)
 
-    patches_per_image_train = conf.train_image_size // conf.patch_size
+    patches_per_image_train = conf.train_image_size**2 // conf.patch_size**2
     validation = np.copy(targets_patch_lvl[:conf.val_size*patches_per_image_train,:,:])
     targets_patch_lvl = np.copy(targets_patch_lvl[conf.val_size*conf.patch_size:,:,:])
     print("New shape of each image: {}".format(targets_patch_lvl.shape))
@@ -228,7 +228,7 @@ def mainFunc(argv):
 
             # feeing in one image at a time
             predictions = []
-            patches_per_image_test = conf.test_image_size // conf.patch_size
+            patches_per_image_test = conf.test_image_size**2 // conf.patch_size**2
             inputs = test.reshape((test.shape[0], conf.patch_size**2))
             for i in range(conf.test_size):
                 batch_inputs = inputs[i*patches_per_image_test:((i+1)*patches_per_image_test),:]

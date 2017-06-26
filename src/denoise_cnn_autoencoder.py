@@ -162,9 +162,9 @@ def mainFunc(argv):
 
     print("Re-sizing targets and validation")
     targets = resize_train_cnn_output_lvl(targets)
-    validation = resize_train_cnn_output_lvl(validation)
+    ##validation = resize_train_cnn_output_lvl(validation)
     print("new size of targets: {}".format(targets.shape)) # (95, 50, 50)
-    print("new size of validation: {}".format(validation.shape)) # (5, 50, 50)
+    ##print("new size of validation: {}".format(validation.shape)) # (5, 50, 50)
 
     print("Adding noise to training data")
     train = corrupt(targets, conf.corruption)

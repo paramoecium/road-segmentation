@@ -16,6 +16,6 @@ class Config():
     patch_size = 16
     dropout_train = 1.0
     learning_rate = 0.0001
-    corruption = 0.04
+    corruption = 0.1
     visualise_training = True
     run_on_test_set = True

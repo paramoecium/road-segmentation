@@ -21,9 +21,6 @@ from skimage.util.shape import view_as_windows
 from cnn_autoencoder.model import cnn_ae
 from cnn_autoencoder.cnn_ae_config import Config as conf
 
-import patch_extraction_module as pem
-import data_loading_module as dlm
-
 tf.set_random_seed(123)
 np.random.seed(123)
 
@@ -127,13 +124,6 @@ def mainFunc(argv):
 
     print("loading ground truth data")
     train_data_filename = "../data/training/groundtruth/"
-    # targets = dlm.extract_data(train_data_filename,
-    #                            num_images=conf.train_size,
-    #                            num_of_transformations=0,
-    #                            patch_size=conf.patch_size, # train images are of size 400 for test this needs to be changed
-    #                            patch_stride=conf.patch_size, # train images are of size 400 for test this needs to be changed
-    #                            border_size=0,
-    #                            zero_center=False)
     patches_per_image_train = conf.train_image_size**2 // conf.patch_size**2
     targets = extract_data(train_data_filename, patches_per_image_train, conf.train_size)
     print("Shape of targets: {}".format(targets.shape)) #
@@ -215,36 +205,32 @@ def mainFunc(argv):
             for i in range(conf.examples_to_show):
                 val = reconstruction(validation[i*patches_per_image_train:((i+1)*patches_per_image_train),:,:], type='train')
                 pred = reconstruction(encode_decode[i*patches_per_image_train:((i+1)*patches_per_image_train),:,:,0], type = 'train')
-                a[0][i].imshow(val)
-                im = a[1][i].imshow(pred)
-            plt.colorbar(im)
+                a[0][i].imshow(val, cmap='gray', interpolation='none')
+                a[1][i].imshow(pred, cmap='gray', interpolation='none')
+                a[0][i].get_xaxis().set_visible(False)
+                a[0][i].get_yaxis().set_visible(False)
+                a[1][i].get_xaxis().set_visible(False)
+                a[1][i].get_yaxis().set_visible(False)
+            plt.gray()
             plt.savefig('./cnn_autoencoder_eval_{}.png'.format(tag))
 
-        print("Deleting train and targets objects")
+        # Deleting train and targets objects
         del train
         del targets
 
         if conf.run_on_test_set:
-            print("DAE on the predictions")
+            print("Running the Convolutional Denoising Autoencoder on the predictions")
             prediction_test_dir = "../results/CNN_Output/test/high_res_raw/"
-            output_path_raw = "../results/CNN_Autoencoder_Output/raw/"
             if not os.path.isdir(prediction_test_dir):
-                raise ValueError('no CNN data to run denoising autoencoder on')
+                raise ValueError('no CNN data to run Convolutional Denoising Autoencoder on')
 
             print("Loading test set")
-            # test = dlm.extract_data(prediction_test_dir,
-            #                         num_images=conf.test_size,
-            #                         num_of_transformations=0,
-            #                         patch_size=conf.patch_size, # train images are of size 400 for test this needs to be changed
-            #                         patch_stride=conf.patch_size, # train images are of size 400 for test this needs to be changed
-            #                         border_size=0,
-            #                         zero_center=False,
-            #                         autoencoder=True) ## uses different path to load data
             patches_per_image_test = conf.test_image_size**2 // conf.patch_size**2
             test = extract_data(prediction_test_dir, patches_per_image_test, conf.test_size, train=False)
             print("Shape of test set: {}".format(test.shape)) ## (72200, 1, 16, 16)
 
-            # feeing in one image at a time
+            # feeding in one image at a time in the convolutional autoencoder for prediction
+            # where the batch size is the number of patches per test image
             predictions = []
             inputs = test.reshape((test.shape[0], conf.patch_size**2))
             for i in range(conf.test_size):
@@ -257,18 +243,24 @@ def mainFunc(argv):
             for i in range(conf.test_size):
                 print("Test img: " + str(i+1))
                 img_name = "cnn_ae_test_" + str(i+1)
-                output_path = "../results/CNN_Autoencoder_Output/tmp/" + img_name
-                print(predictions[i].shape) # (1444, 16, 16, 1) 
+                output_path = "../results/CNN_Autoencoder_Output/high_res_raw/"
+                if not os.path.isdir(output_path):
+                    raise ValueError('no CNN data to run Convolutional Denoising Autoencoder on')
+                print(predictions[i].shape) # (1444, 16, 16, 1)
                 prediction = reconstruction(predictions[i][:,:,:,0], type='test')
-                scipy.misc.imsave(output_path + ".png", prediction)
+                scipy.misc.imsave(output_path + img_name + ".png", prediction)
 
             f, a = plt.subplots(2, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
             for i in range(conf.examples_to_show):
                 t = reconstruction(test[i*patches_per_image_test:((i+1)*patches_per_image_test),:,:], type='test')
                 pred = reconstruction(predictions[i][:,:,:,0], type='test')
-                a[0][i].imshow(t)
-                im = a[1][i].imshow(pred)
-            plt.colorbar(im)
+                a[0][i].imshow(t, cmap='gray', interpolation='none')
+                a[1][i].imshow(pred, cmap='gray', interpolation='none')
+                a[0][i].get_xaxis().set_visible(False)
+                a[0][i].get_yaxis().set_visible(False)
+                a[1][i].get_xaxis().set_visible(False)
+                a[1][i].get_yaxis().set_visible(False)
+            plt.gray()
             plt.savefig('./cnn_autoencoder_prediction_{}.png'.format(tag))
 
             print("Finished saving cnn autoencoder outputs to disk")

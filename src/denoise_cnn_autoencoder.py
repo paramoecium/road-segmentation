@@ -131,10 +131,9 @@ def mainFunc(argv):
 
     print("loading ground truth data")
     train_data_filename = "../data/training/groundtruth/"
-    targets = extract_data(train_data_filename, num_images=conf.train_size, conf.patch_size, 'train')
-    print("Shape of targets: {}".format(targets.shape))
+    targets = extract_patches(train_data_filename, conf.train_size, conf.patch_size, 'train')
     targets = np.stack(targets).reshape(-1, conf.patch_size, conf.patch_size) # (n, 16, 16)
-    targets = targets.reshape(len(targets), -1) # (n, 256)
+    targets = targets.reshape(len(targets), -1) # (20000, 256)
     print("Shape of targets: {}".format(targets.shape))
     validation = np.copy(targets[:conf.val_size,:])
     targets = np.copy(targets[conf.val_size:,:])
@@ -224,11 +223,10 @@ def mainFunc(argv):
 
             print("Loading test set")
             patches_per_image_test = conf.test_image_size**2 // conf.patch_size**2
-            test = extract_data(prediction_test_dir, conf.test_size, conf.patch_size, 'test')
-            print("Shape of test: {}".format(test.shape))
+            test = extract_patches(prediction_test_dir, conf.test_size, conf.patch_size, 'test')
             test = np.stack(test).reshape(-1, conf.patch_size, conf.patch_size) # (n, 16, 16)
-            test = targets.reshape(len(test), -1) # (n, 256)
-            print("Shape of test: {}".format(test.shape))
+            test = test.reshape(len(test), -1) # (n, 256)
+            print("Shape of test: {}".format(test.shape)) # (26450, 256)
 
             # feeding in one image at a time in the convolutional autoencoder for prediction
             # where the batch size is the number of patches per test image
@@ -240,8 +238,8 @@ def mainFunc(argv):
                 feed_dict = model.make_inputs_predict(batch_inputs)
                 prediction = sess.run(model.y_pred, feed_dict) ## numpy array (50, 76, 76, 1)
                 predictions.append(prediction)
-            if r > 0:
-                batch_inputs = test[runs*conf.batch_size:(runs*conf.batch_size + r),:]
+            if rems > 0:
+                batch_inputs = test[runs*conf.batch_size:(runs*conf.batch_size + rems),:]
                 feed_dict = model.make_inputs_predict(batch_inputs)
                 prediction = sess.run(model.y_pred, feed_dict)
                 predictions.append(prediction)
@@ -257,17 +255,17 @@ def mainFunc(argv):
             #     prediction = reconstruction(predictions[i][:,:,:,0], type='test')
             #     scipy.misc.imsave(output_path + img_name + ".png", prediction)
             #
-            # f, a = plt.subplots(2, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
-            # for i in range(conf.examples_to_show):
-            #     t = reconstruction(inputs[i*patches_per_image_test:((i+1)*patches_per_image_test),:,:], type='test')
-            #     pred = reconstruction(predictions[i][:,:,:,0], type='test')
-            #     a[0][i].imshow(t, cmap='gray', interpolation='none')
-            #     a[1][i].imshow(pred, cmap='gray', interpolation='none')
-            #     a[0][i].get_xaxis().set_visible(False)
-            #     a[0][i].get_yaxis().set_visible(False)
-            #     a[1][i].get_xaxis().set_visible(False)
-            #     a[1][i].get_yaxis().set_visible(False)
-            # plt.gray()
+            f, a = plt.subplots(2, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
+            for i in range(conf.examples_to_show):
+            	t = reconstruction(inputs[i*patches_per_image_test:((i+1)*patches_per_image_test),:,:], type='test')
+            	pred = reconstruction(predictions[i][:,:,:,0], type='test')
+            	a[0][i].imshow(t, cmap='gray', interpolation='none')
+            	a[1][i].imshow(pred, cmap='gray', interpolation='none')
+            	a[0][i].get_xaxis().set_visible(False)
+            	a[0][i].get_yaxis().set_visible(False)
+            	a[1][i].get_xaxis().set_visible(False)
+            	a[1][i].get_yaxis().set_visible(False)
+            plt.gray()
             # plt.savefig('./cnn_autoencoder_prediction_{}.png'.format(tag))
 
             print("Finished saving cnn autoencoder outputs to disk")

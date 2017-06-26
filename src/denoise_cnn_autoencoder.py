@@ -57,7 +57,6 @@ def extract_data(filename_base, num_images, train=True):
             image_fn = filename_base + "raw_test_" + str(i+1) + "_pixels.png"
         if os.path.isfile(image_fn):
             img = mpimg.imread(image_fn)
-            print(img.shape)
         else:
             print('File ' + image_fn + ' does not exist')
         dd[i,:,:] = img
@@ -81,7 +80,7 @@ def reconstruction(img_data, type):
     """
     Reconstruct single image from flattened array
     Args:
-        img_data: flattened image array
+        img_data: 3d array (num patchs x patch size x patch size)
         type: str train / test
     Returns:
         recontructed image
@@ -157,32 +156,28 @@ def mainFunc(argv):
     print("loading ground truth data")
     train_data_filename = "../data/training/groundtruth/"
     targets = extract_data(train_data_filename, num_images=conf.train_size, train=True)
-    print("Shape of targets: {}".format(targets.shape))
+    print("Shape of targets: {}".format(targets.shape)) # (100, 400, 400)
     validation = np.copy(targets[:conf.val_size,:,:])
     targets = np.copy(targets[conf.val_size:,:,:])
 
     print("Re-sizing targets and validation")
     targets = resize_train_cnn_output_lvl(targets)
     validation = resize_train_cnn_output_lvl(validation)
-    print("new size of targets: {}".format(targets.shape))
-    print("new size of validation: {}".format(validation.shape))
+    print("new size of targets: {}".format(targets.shape)) # (95, 50, 50)
+    print("new size of validation: {}".format(validation.shape)) # (5, 50, 50)
 
     print("Adding noise to training data")
     train = corrupt(targets, conf.corruption)
     validation = corrupt(validation, conf.corruption)
-
-    print("Shape of training data: {}".format(train.shape)) # (62420, 1, 16, 16)
-    print("Shape of targets data: {}".format(targets.shape)) # (62420, 1, 16, 16)
-    print("Shape of validation data: {}".format(validation.shape)) # (3125, 1, 16, 16)
 
     print("Patchifying data for network")
     train = patchify(train, train=True)
     targets = patchify(targets, train=True)
     validation = patchify(validation, train=False)
 
-    print("Shape of training data: {}".format(train.shape)) # (62420, 1, 16, 16)
-    print("Shape of targets data: {}".format(targets.shape)) # (62420, 1, 16, 16)
-    print("Shape of validation data: {}".format(validation.shape)) # (3125, 1, 16, 16)
+    print("Shape of training data: {}".format(train.shape)) # (232750, 16, 16)
+    print("Shape of targets data: {}".format(targets.shape)) # (232750, 16, 16)
+    print("Shape of validation data: {}".format(validation.shape)) # (45, 16, 16)
 
     print("Initializing CNN denoising autoencoder")
     model = cnn_ae(conf.patch_size**2, ## dim of the inputs
@@ -221,8 +216,8 @@ def mainFunc(argv):
                 offset = (batch_index*conf.batch_size) % (n - conf.batch_size)
                 batch_indices = perm_idx[offset:(offset + conf.batch_size)]
 
-                batch_inputs = train[batch_indices,:]
-                batch_targets = targets[batch_indices,:]
+                batch_inputs = train[batch_indices,:].reshape((conf.batch_size, conf.patch_size**2))
+                batch_targets = targets[batch_indices,:].reshape((conf.batch_size, conf.patch_size**2))
 
                 feed_dict = model.make_inputs(batch_inputs, batch_targets)
 
@@ -245,7 +240,7 @@ def mainFunc(argv):
             # Compare original images with their reconstructions
             f, a = plt.subplots(2, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
             for i in range(conf.examples_to_show):
-                val = reconstruction(validation[i*patches_per_image_train:((i+1)*patches_per_image_train),:].reshape((patches_per_image_train, conf.patch_size, conf.patch_size)), type='train')
+                val = reconstruction(validation[i*patches_per_image_train:((i+1)*patches_per_image_train),:,:], type='train')
                 pred = reconstruction(encode_decode[i*patches_per_image_train:((i+1)*patches_per_image_train),:,:,0], type = 'train')
                 a[0][i].imshow(val, cmap='gray', interpolation='none')
                 a[1][i].imshow(pred, cmap='gray', interpolation='none')
@@ -294,7 +289,7 @@ def mainFunc(argv):
 
             f, a = plt.subplots(2, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
             for i in range(conf.examples_to_show):
-                t = reconstruction(inputs[i*patches_per_image_test:((i+1)*patches_per_image_test),:].reshape(patches_per_image_test, conf.patch_size, conf.patch_size), type='test')
+                t = reconstruction(inputs[i*patches_per_image_test:((i+1)*patches_per_image_test),:,:], type='test')
                 pred = reconstruction(predictions[i][:,:,:,0], type='test')
                 a[0][i].imshow(t, cmap='gray', interpolation='none')
                 a[1][i].imshow(pred, cmap='gray', interpolation='none')

@@ -122,7 +122,7 @@ def patchify(data, train=True):
         data: numpy array of shape (n_points, dim_x, dim_y)
         train: bool
     Returns:
-        numpy array of size (n, patch_size**2)
+        numpy array of size (n, patch_size, patch_size)
     """
 
     patches = []
@@ -279,15 +279,15 @@ def mainFunc(argv):
 
             print("Loading test set")
             patches_per_image_test = conf.test_image_size**2 // conf.patch_size**2
-            test = extract_data(prediction_test_dir, conf.test_size, train=False)
+            test = extract_data(prediction_test_dir, conf.test_size, train=False) # 50 x 608 x 608
             inputs = patchify(test, train=False)
-            print("Shape of test set: {}".format(test.shape)) ## (72200, 1, 16, 16)
+            print("Shape of test set: {}".format(inputs.shape)) ##
 
             # feeding in one image at a time in the convolutional autoencoder for prediction
             # where the batch size is the number of patches per test image
             predictions = []
             for i in range(conf.test_size):
-                batch_inputs = inputs[i*patches_per_image_test:((i+1)*patches_per_image_test),:]
+                batch_inputs = inputs[i*patches_per_image_test:((i+1)*patches_per_image_test),:,:].reshape((patches_per_image_test, conf.patch_size**2))
                 feed_dict = model.make_inputs_predict(batch_inputs)
                 prediction = sess.run(model.y_pred, feed_dict) ## numpy array (50, 76, 76, 1)
                 predictions.append(prediction)

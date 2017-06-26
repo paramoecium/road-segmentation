@@ -15,14 +15,14 @@ import logging
 from skimage.transform import resize
 import scipy
 import scipy.misc
+import matplotlib.image as mpimg
+from skimage.util.shape import view_as_windows
 
 from cnn_autoencoder.model import cnn_ae
 from cnn_autoencoder.cnn_ae_config import Config as conf
 
 import patch_extraction_module as pem
 import data_loading_module as dlm
-import constants as const
-from scaling import label_to_img, img_to_label
 
 tf.set_random_seed(123)
 np.random.seed(123)
@@ -52,6 +52,47 @@ def corrupt(data, nu, type='salt_and_pepper'):
         tmp[np.logical_and(img_min, idx)] = 1
     return tmp
 
+def extract_data(filename_base, patches_per_image, num_images, patch_size=16,
+                 patch_stride=16, train=True):
+    """Extract patches from images."""
+    dd = np.zeros((num_images*patches_per_image, patch_size, patch_size))
+    print(dd.shape)
+    for i in range(num_images):
+        if train:
+            image_fn = filename_base + "satImage_%.3d" % (i+1) + ".png"
+        else:
+            image_fn = filename_base + "raw_test_" + str(i+1) + "_pixels.png"
+        if os.path.isfile(image_fn):
+            img = mpimg.imread(image_fn)
+        else:
+            print('File ' + image_fn + ' does not exist')
+        d = view_as_windows(img, window_shape=(patch_size,patch_size),step=patch_stride)
+        dd[i*patches_per_image:(i+1)*patches_per_image,:,:] = np.reshape(d, (-1, patch_size, patch_size))
+    return dd
+
+def reconstruction(img_data, type):
+    """
+    Reconstruct single image from flattened array
+    Args:
+        img_data: flattened image array
+        type: str train / test
+    Returns:
+        recontructed image
+    """
+    if type == "train":
+        size = conf.train_image_size
+    elif type == "test":
+        size = conf.test_image_size
+    else:
+        ValueError('train or test plz')
+    reconstruction = np.zeros((size,size))
+    r = size // conf.patch_size
+    idx = 0
+    for i in range(int(r)):
+        for j in range(int(r)):
+            reconstruction[i*conf.patch_size:(i+1)*conf.patch_size,j*conf.patch_size:(j+1)*conf.patch_size] =  img_data[idx,:,:]
+            idx += 1
+    return reconstruction
 
 def mainFunc(argv):
     def printUsage():
@@ -86,15 +127,16 @@ def mainFunc(argv):
 
     print("loading ground truth data")
     train_data_filename = "../data/training/groundtruth/"
-    targets = dlm.extract_data(train_data_filename,
-                               num_images=conf.train_size,
-                               num_of_transformations=0,
-                               patch_size=conf.patch_size, # train images are of size 400 for test this needs to be changed
-                               patch_stride=conf.patch_size, # train images are of size 400 for test this needs to be changed
-                               border_size=0,
-                               zero_center=False)
-    print("shape of targets: {}".format(targets.shape))
+    # targets = dlm.extract_data(train_data_filename,
+    #                            num_images=conf.train_size,
+    #                            num_of_transformations=0,
+    #                            patch_size=conf.patch_size, # train images are of size 400 for test this needs to be changed
+    #                            patch_stride=conf.patch_size, # train images are of size 400 for test this needs to be changed
+    #                            border_size=0,
+    #                            zero_center=False)
     patches_per_image_train = conf.train_image_size**2 // conf.patch_size**2
+    targets = extract_data(train_data_filename, patches_per_image_train, conf.train_size)
+    print("Shape of targets: {}".format(targets.shape)) #
     validation = np.copy(targets[:conf.val_size*patches_per_image_train,:,:])
     targets_patch_lvl = np.copy(targets[conf.val_size*conf.patch_size:,:,:])
 
@@ -148,8 +190,8 @@ def mainFunc(argv):
                 offset = (batch_index*conf.batch_size) % (n - conf.batch_size)
                 batch_indices = perm_idx[offset:(offset + conf.batch_size)]
 
-                batch_inputs = train[batch_indices,0,:,:].reshape((conf.batch_size, conf.patch_size**2))
-                batch_targets = targets[batch_indices,0,:,:].reshape((conf.batch_size, conf.patch_size**2))
+                batch_inputs = train[batch_indices,:,:].reshape((conf.batch_size, conf.patch_size**2))
+                batch_targets = targets[batch_indices,:,:].reshape((conf.batch_size, conf.patch_size**2))
 
                 feed_dict = model.make_inputs(batch_inputs, batch_targets)
 
@@ -171,10 +213,10 @@ def mainFunc(argv):
             # Compare original images with their reconstructions
             f, a = plt.subplots(2, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
             for i in range(conf.examples_to_show):
-                a[0][i].imshow(np.reshape(validation[i*patches_per_image_train:((i+1)*patches_per_image_train),0,:,:],
-                                          (conf.train_image_size, conf.train_image_size)))
-                im = a[1][i].imshow(np.reshape(encode_decode[i*patches_per_image_train:((i+1)*patches_per_image_train),:,:,0],
-                                               (conf.train_image_size, conf.train_image_size)))
+                val = reconstruction(validation[i*patches_per_image_train:((i+1)*patches_per_image_train),:,:], type='train')
+                pred = reconstruction(encode_decode[i*patches_per_image_train:((i+1)*patches_per_image_train),:,:,0], type = 'train')
+                a[0][i].imshow(val)
+                im = a[1][i].imshow(pred)
             plt.colorbar(im)
             plt.savefig('./cnn_autoencoder_eval_{}.png'.format(tag))
 
@@ -190,19 +232,20 @@ def mainFunc(argv):
                 raise ValueError('no CNN data to run denoising autoencoder on')
 
             print("Loading test set")
-            test = dlm.extract_data(prediction_test_dir,
-                                    num_images=conf.test_size,
-                                    num_of_transformations=0,
-                                    patch_size=conf.patch_size, # train images are of size 400 for test this needs to be changed
-                                    patch_stride=conf.patch_size, # train images are of size 400 for test this needs to be changed
-                                    border_size=0,
-                                    zero_center=False,
-                                    autoencoder=True) ## uses different path to load data
+            # test = dlm.extract_data(prediction_test_dir,
+            #                         num_images=conf.test_size,
+            #                         num_of_transformations=0,
+            #                         patch_size=conf.patch_size, # train images are of size 400 for test this needs to be changed
+            #                         patch_stride=conf.patch_size, # train images are of size 400 for test this needs to be changed
+            #                         border_size=0,
+            #                         zero_center=False,
+            #                         autoencoder=True) ## uses different path to load data
+            patches_per_image_test = conf.test_image_size**2 // conf.patch_size**2
+            test = extract_data(prediction_test_dir, patches_per_image_test, conf.test_size, train=False)
             print("Shape of test set: {}".format(test.shape)) ## (72200, 1, 16, 16)
 
             # feeing in one image at a time
             predictions = []
-            patches_per_image_test = conf.test_image_size**2 // conf.patch_size**2
             inputs = test.reshape((test.shape[0], conf.patch_size**2))
             for i in range(conf.test_size):
                 batch_inputs = inputs[i*patches_per_image_test:((i+1)*patches_per_image_test),:]
@@ -215,14 +258,16 @@ def mainFunc(argv):
                 print("Test img: " + str(i+1))
                 img_name = "cnn_ae_test_" + str(i+1)
                 output_path = "../results/CNN_Autoencoder_Output/tmp/" + img_name
-                prediction = np.reshape(predictions[i], (conf.test_image_size, conf.test_image_size))
+                print(predictions[i].shape) # (1444, 16, 16, 1) 
+                prediction = reconstruction(predictions[i][:,:,:,0], type='test')
                 scipy.misc.imsave(output_path + ".png", prediction)
 
             f, a = plt.subplots(2, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
             for i in range(conf.examples_to_show):
-                a[0][i].imshow(np.reshape(test[i*patches_per_image_test:((i+1)*patches_per_image_test),:,:,:],
-                                          (conf.test_image_size, conf.test_image_size)))
-                im = a[1][i].imshow(np.reshape(predictions[i], (conf.test_image_size, conf.test_image_size)))
+                t = reconstruction(test[i*patches_per_image_test:((i+1)*patches_per_image_test),:,:], type='test')
+                pred = reconstruction(predictions[i][:,:,:,0], type='test')
+                a[0][i].imshow(t)
+                im = a[1][i].imshow(pred)
             plt.colorbar(im)
             plt.savefig('./cnn_autoencoder_prediction_{}.png'.format(tag))
 

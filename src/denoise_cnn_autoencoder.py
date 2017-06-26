@@ -49,7 +49,7 @@ def extract_data(filename_base, num_images, train=True):
     if train:
         dd = np.zeros((num_images, conf.train_image_size, conf.train_image_size))
     else:
-        dd = np.zeros((num_images, con.test_image_size, conf.test_image_size))
+        dd = np.zeros((num_images, conf.test_image_size, conf.test_image_size))
     for i in range(num_images):
         if train:
             image_fn = filename_base + "satImage_%.3d" % (i+1) + ".png"
@@ -74,6 +74,19 @@ def resize_train_cnn_output_lvl(data):
     dd = np.zeros((data.shape[0], new_size, new_size))
     for i in range(data.shape[0]):
         dd[i,:,:] = resize(data[i,:,:], (new_size, new_size))
+    return dd
+
+def resize_train_lvl(data):
+    """
+    Resize data so that individual pixels are 8x8 for noising
+    Args:
+        data: numpy array of training data at cnn output lvl i.e. 50x50
+    Returns:
+        numpy array of size 400x400
+    """
+    dd = np.zeros((data.shape[0], 400, 400))
+    for i in range(data.shape[0]):
+        dd[i,:,:] = resize(data[i,:,:], (400, 400))
     return dd
 
 def reconstruction(img_data, type):
@@ -162,13 +175,16 @@ def mainFunc(argv):
 
     print("Re-sizing targets and validation")
     targets = resize_train_cnn_output_lvl(targets)
-    ##validation = resize_train_cnn_output_lvl(validation)
+    validation = resize_train_cnn_output_lvl(validation)
     print("new size of targets: {}".format(targets.shape)) # (95, 50, 50)
-    ##print("new size of validation: {}".format(validation.shape)) # (5, 50, 50)
+    print("new size of validation: {}".format(validation.shape)) # (5, 50, 50)
 
     print("Adding noise to training data")
     train = corrupt(targets, conf.corruption)
     validation = corrupt(validation, conf.corruption)
+
+    print("Re-sizing validation back to train lvl")
+    validation = resize_train_lvl(validation)
 
     print("Patchifying data for network")
     train = patchify(train, train=True)

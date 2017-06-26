@@ -23,6 +23,7 @@ import patch_extraction_module as pem
 import data_loading_module as dlm
 import constants as const
 from scaling import label_to_img, img_to_label
+from skimage.util.shape import view_as_windows
 
 tf.set_random_seed(123)
 np.random.seed(123)

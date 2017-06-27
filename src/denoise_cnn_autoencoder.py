@@ -54,7 +54,7 @@ def extract_patches(filename_base, num_images, patch_size=conf.patch_size, phase
                 img = mpimg.imread(image_filename)
                 img = resize(img, (50,50))
                 patches.append(image.extract_patches(img, (patch_size, patch_size), extraction_step=1))
-                patches.append(image.extract_patches(np.rot90(img), (patch_size, patch_size), extraction_step=1))
+                #patches.append(image.extract_patches(np.rot90(img), (patch_size, patch_size), extraction_step=1))
         if phase == 'test':
             imageid = "raw_test_%d_pixels" % i
             image_filename = filename_base + imageid + ".png"

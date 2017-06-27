@@ -143,7 +143,8 @@ def mainFunc(argv):
     train_data_filename = "../data/training/groundtruth/"
     targets = extract_patches(train_data_filename, conf.train_size, conf.patch_size, 'train')
     targets = np.stack(targets).reshape(-1, conf.patch_size, conf.patch_size) # (20000, 16, 16)
-    targets = targets.reshape(len(targets), -1) # (20000, 256)
+    targets = targets.reshape(len(targets), -1) # (122500, 256) for no rot
+    train_full = np.copy(targets)
     print("Shape of targets: {}".format(targets.shape))
     patches_per_image_train = ( 50 - conf.patch_size + 1)**2
     print("Patches per train image: {}".format(patches_per_image_train))
@@ -203,26 +204,30 @@ def mainFunc(argv):
 
         saver.save(sess, os.path.join(train_logfolderPath, "cnn-ae-{}-{}-ep{}-final.ckpt".format(tag_string, timestamp, conf.num_epochs)))
 
+        # Deleting train and targets objects
+        del train
+        del targets
+
         if conf.run_on_train_set:
             print("Running Convolutional Autoencoder on training images for upstream classification")
             predictions = []
-            runs = train.shape[0] // conf.batch_size
-            rem = train.shape[0] % conf.batch_size
+            runs = train_full.shape[0] // conf.batch_size
+            rem = train_full.shape[0] % conf.batch_size
             for i in range(runs):
-                batch_inputs = train[i*conf.batch_size:((i+1)*conf.batch_size),:]
+                batch_inputs = train_full[i*conf.batch_size:((i+1)*conf.batch_size),:]
                 feed_dict = model.make_inputs_predict(batch_inputs)
                 prediction = sess.run(model.y_pred, feed_dict) ## numpy array (50, 76, 76, 1)
                 predictions.append(prediction)
             if rem > 0:
-                batch_inputs = train[runs*conf.batch_size:(runs*conf.batch_size + rem),:]
+                batch_inputs = train_full[runs*conf.batch_size:(runs*conf.batch_size + rem),:]
                 feed_dict = model.make_inputs_predict(batch_inputs)
                 prediction = sess.run(model.y_pred, feed_dict)
                 predictions.append(prediction)
 
             print("individual prediction shape: {}".format(predictions[0].shape))
-            predictions = np.concatenate(predictions, axis=0).reshape(train.shape[0], conf.patch_size**2)
+            predictions = np.concatenate(predictions, axis=0).reshape(train_full.shape[0], conf.patch_size**2)
             #predictions = predictions.reshape(len(predictions), -1)
-            print("Shape of predictions: {}".format(predictions.shape))
+            print("Shape of predictions: {}".format(predictions.shape)) # (116375, 256)
 
             # Save outputs to disk
             for i in range(conf.train_size):
@@ -234,10 +239,6 @@ def mainFunc(argv):
                 prediction = reconstruction(predictions[i*patches_per_image_train:(i+1)*patches_per_image_train,:], 50)
                 # resizing test images to 400x400 and saving to disk
                 scipy.misc.imsave(output_path + img_name + ".png", resize_img(prediction, 'train'))
-
-        # Deleting train and targets objects
-        del train
-        del targets
 
         if conf.visualise_training:
             print("Visualising encoder results and true images from train set")

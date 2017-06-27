@@ -83,19 +83,29 @@ def reconstruction(img_data, size):
             idx += 1
     return reconstruction
 
-def resize_test_img(img):
+def resize_img(img, opt):
     """
     CNN predictions are made at the 36x36 pixel lvl and the test set needs to be at the 608x608
     lvl. The function resizes.
     Args:
-        numpy array 36x36
+        numpy array 36x36 for test or 50x50 for train
     Returns:
-        numpy array 608x608
+        numpy array 608x608 for test or 400x400 for train
     """
-    dd = np.zeros((conf.test_image_size, conf.test_image_size))
-    for i in range(36):
-        for j in range(36):
-            dd[j*conf.patch_size:(j+1)*conf.patch_size,i*conf.patch_size:(i+1)*conf.patch_size] = img[j,i]
+    if opt == 'test':
+        size = conf.test_image_size
+        steps = 36
+        blocks = 16
+    elif opt == 'train':
+        size = conf.train_image_size
+        steps = 50
+        blocks = 8
+    else:
+        raise ValueError('test or train plz')
+    dd = np.zeros((size, size))
+    for i in range(steps):
+        for j in range(steps):
+            dd[j*blocks:(j+1)*blocks,i*blocks:(i+1)*blocks] = img[j,i]
     return dd
 
 def mainFunc(argv):
@@ -193,6 +203,38 @@ def mainFunc(argv):
 
         saver.save(sess, os.path.join(train_logfolderPath, "cnn-ae-{}-{}-ep{}-final.ckpt".format(tag_string, timestamp, conf.num_epochs)))
 
+        if conf.run_on_train_set:
+            print("Running Convolutional Autoencoder on training images for upstream classification")
+            predictions = []
+            runs = train.shape[0] // conf.batch_size
+            rem = train.shape[0] % conf.batch_size
+            for i in range(runs):
+                batch_inputs = train[i*conf.batch_size:((i+1)*conf.batch_size),:]
+                feed_dict = model.make_inputs_predict(batch_inputs)
+                prediction = sess.run(model.y_pred, feed_dict) ## numpy array (50, 76, 76, 1)
+                predictions.append(prediction)
+            if rem > 0:
+                batch_inputs = train[runs*conf.batch_size:(runs*conf.batch_size + rem),:]
+                feed_dict = model.make_inputs_predict(batch_inputs)
+                prediction = sess.run(model.y_pred, feed_dict)
+                predictions.append(prediction)
+
+            print("individual prediction shape: {}".format(predictions[0].shape))
+            predictions = np.concatenate(predictions, axis=0).reshape(train.shape[0], conf.patch_size**2)
+            #predictions = predictions.reshape(len(predictions), -1)
+            print("Shape of predictions: {}".format(predictions.shape))
+
+            # Save outputs to disk
+            for i in range(conf.train_size):
+                print("Train img: " + str(i+1))
+                img_name = "cnn_ae_train_" + str(i+1)
+                output_path = "../results/CNN_Autoencoder_Output/train/"
+                if not os.path.isdir(output_path):
+                    raise ValueError('no CNN data to run Convolutional Denoising Autoencoder on')
+                prediction = reconstruction(predictions[i*patches_per_image_train:(i+1)*patches_per_image_train,:], 50)
+                # resizing test images to 400x400 and saving to disk
+                scipy.misc.imsave(output_path + img_name + ".png", resize_img(prediction, 'train'))
+
         # Deleting train and targets objects
         del train
         del targets
@@ -253,12 +295,12 @@ def mainFunc(argv):
             for i in range(conf.test_size):
                 print("Test img: " + str(i+1))
                 img_name = "cnn_ae_test_" + str(i+1)
-                output_path = "../results/CNN_Autoencoder_Output/high_res_raw/"
+                output_path = "../results/CNN_Autoencoder_Output/test/"
                 if not os.path.isdir(output_path):
                     raise ValueError('no CNN data to run Convolutional Denoising Autoencoder on')
                 prediction = reconstruction(predictions[i*patches_per_image_test:(i+1)*patches_per_image_test,:], 38)
                 # resizing test images to 608x608 and saving to disk
-                scipy.misc.imsave(output_path + img_name + ".png", resize_test_img(prediction))
+                scipy.misc.imsave(output_path + img_name + ".png", resize_img(prediction, 'test'))
 
             f, a = plt.subplots(2, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
             for i in range(conf.examples_to_show):
@@ -273,7 +315,7 @@ def mainFunc(argv):
             plt.gray()
             plt.savefig('./cnn_autoencoder_prediction_{}.png'.format(tag))
 
-            print("Finished saving cnn autoencoder outputs to disk")
+            print("Finished saving cnn autoencoder test set to disk")
 
 if __name__ == "__main__":
     #logging.basicConfig(filename='autoencoder.log', level=logging.DEBUG)

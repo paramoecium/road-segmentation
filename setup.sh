@@ -21,8 +21,8 @@ mkdir -p results/Autoencoder_Output/raw
 mkdir -p results/Autoencoder_Output/high_res_raw
 mkdir -p logs/Autoencoder
 
-mkdir -p results/CNN_Autoencoder_Output/raw
-mkdir -p results/CNN_Autoencoder_Output/high_res_raw
+mkdir -p results/CNN_Autoencoder_Output/test
+mkdir -p results/CNN_Autoencoder_Output/train
 mkdir -p logs/CNN_Autoencoder
 
 # Create tmp directories to hold TensorFlow results

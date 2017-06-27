@@ -15,7 +15,7 @@ class Config():
     test_size = 50 # test data set size
     patch_size = 16
     dropout_train = 1.0
-    learning_rate = 0.0001
+    learning_rate = 0.005
     corruption = 0.1
     visualise_training = True
     run_on_test_set = True

@@ -83,6 +83,21 @@ def reconstruction(img_data, size):
             idx += 1
     return reconstruction
 
+def resize_test_img(img):
+    """
+    CNN predictions are made at the 36x36 pixel lvl and the test set needs to be at the 608x608
+    lvl. The function resizes.
+    Args:
+        numpy array 36x36
+    Returns:
+        numpy array 608x608
+    """
+    dd = np.zeros((conf.test_image_size, conf.test_image_size))
+    for i in range(36):
+        for j in range(36):
+            dd[j*conf.patch_size:(j+1)*conf.patch_size,i*conf.patch_size:(i+1)*conf.patch_size] = img[j,i]
+    return dd
+
 def mainFunc(argv):
     def printUsage():
         print('main.py -n <num_cores> -t <tag>')
@@ -132,8 +147,8 @@ def mainFunc(argv):
     print("Initializing CNN denoising autoencoder")
     model = cnn_ae(conf.patch_size**2, ## dim of the inputs
                    n_filters=[1, 16, 32, 64],
-                   filter_sizes=[9, 7, 5, 3],
-                   learning_rate=0.005)
+                   filter_sizes=[7, 5, 3, 3],
+                   learning_rate=conf.learning_rate)
 
     print("Starting TensorFlow session")
     with tf.Session(config=configProto) as sess:
@@ -228,11 +243,11 @@ def mainFunc(argv):
                 feed_dict = model.make_inputs_predict(batch_inputs)
                 prediction = sess.run(model.y_pred, feed_dict)
                 predictions.append(prediction)
-	    
+
             print("individual prediction shape: {}".format(predictions[0].shape))
             predictions = np.concatenate(predictions, axis=0).reshape(test.shape[0], conf.patch_size**2)
             #predictions = predictions.reshape(len(predictions), -1)
-            print("Shape of predictions: {}".format(predictions.shape)) 
+            print("Shape of predictions: {}".format(predictions.shape))
 
             # Save outputs to disk
             for i in range(conf.test_size):
@@ -242,7 +257,8 @@ def mainFunc(argv):
                 if not os.path.isdir(output_path):
                     raise ValueError('no CNN data to run Convolutional Denoising Autoencoder on')
                 prediction = reconstruction(predictions[i*patches_per_image_test:(i+1)*patches_per_image_test,:], 38)
-                scipy.misc.imsave(output_path + img_name + ".png", prediction)
+                # resizing test images to 608x608 and saving to disk
+                scipy.misc.imsave(output_path + img_name + ".png", resize_test_img(prediction))
 
             f, a = plt.subplots(2, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
             for i in range(conf.examples_to_show):

@@ -24,7 +24,7 @@ BATCH_SIZE = 16  # 64
 
 TERMINATE_AFTER_TIME = True
 NUM_EPOCHS = 1
-MAX_TRAINING_TIME_IN_SEC = 30 * 60
+MAX_TRAINING_TIME_IN_SEC = 20
 
 RESTORE_MODEL = False  # If True, restore existing model instead of training a new one
 RECORDING_STEP = 1000
@@ -195,7 +195,7 @@ def make_img_overlay(img, predicted_img, true_img=None):
 
 def main(argv=None):  # pylint: disable=unused-argument
 
-    data_dir = '../data/training/'
+    data_dir = '../../data/training/'
     train_data_filename = data_dir + 'images/'
     train_labels_filename = data_dir + 'groundtruth/'
 
@@ -461,14 +461,14 @@ def main(argv=None):  # pylint: disable=unused-argument
     train_all_prediction = tf.nn.softmax(model(train_all_data_node))
 
     # Add ops to save and restore all the variables.
-    saver = tf.train.Saver()
+    saver = tf.train.Saver(keep_checkpoint_every_n_hours=1)
 
     # Create a local session to run this computation.
     with tf.Session() as s:
 
         if RESTORE_MODEL:
             # Restore variables from disk.
-            saver.restore(s, FLAGS.train_dir + "/model.ckpt")
+            saver.restore(s, tf.train.latest_checkpoint(FLAGS.train_dir))
             print("Model restored.")
 
         else:
@@ -535,7 +535,7 @@ def main(argv=None):  # pylint: disable=unused-argument
                             feed_dict=feed_dict)
 
                 # Save the variables to disk.
-                save_path = saver.save(s, FLAGS.train_dir + "/model.ckpt")
+                save_path = saver.save(s, FLAGS.train_dir + "/model.ckpt", global_step=(batch_index * BATCH_SIZE))
                 print("Model saved in file: %s" % save_path)
 
                 iepoch += 1

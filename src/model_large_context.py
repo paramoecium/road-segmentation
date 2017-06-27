@@ -598,14 +598,14 @@ def main(argv=None):  # pylint: disable=unused-argument
     train_prediction = tf.nn.softmax(logits)
 
     # Add ops to save and restore all the variables.
-    saver = tf.train.Saver()
+    saver = tf.train.Saver(keep_checkpoint_every_n_hours=1)
 
     #######################
     ### RUNNING SESSION ###
     #######################
     with tf.Session() as s:
         if RESTORE_MODEL:
-            saver.restore(s, FLAGS.train_dir + "model.ckpt")
+            saver.restore(s, tf.train.latest_checkpoint(FLAGS.train_dir))
             print("### MODEL RESTORED ###")
         else:
             tf.initialize_all_variables().run()
@@ -680,19 +680,19 @@ def main(argv=None):  # pylint: disable=unused-argument
                         sys.stdout.flush()
 
                         # Save the variables to disk.
-                        save_path = saver.save(s, FLAGS.train_dir + "/model.ckpt")
+                        save_path = saver.save(s, FLAGS.train_dir + "/model.ckpt", global_step=(batch_index * BATCH_SIZE))
 
                     batch_index += 1
                     if TERMINATE_AFTER_TIME and time.time() - start > MAX_TRAINING_TIME_IN_SEC:
                         run_training = False
                         # Save the variables to disk.
-                        save_path = saver.save(s, FLAGS.train_dir + "/model.ckpt")
+                        save_path = saver.save(s, FLAGS.train_dir + "/model.ckpt", global_step=(batch_index * BATCH_SIZE))
 
                 iepoch += 1
                 if not TERMINATE_AFTER_TIME and iepoch >= NUM_EPOCHS:
                     run_training = False
                     # Save the variables to disk.
-                    save_path = saver.save(s, FLAGS.train_dir + "/model.ckpt")
+                    save_path = saver.save(s, FLAGS.train_dir + "/model.ckpt", global_step=(batch_index * BATCH_SIZE))
 
         prefix_results = ROOT_DIR + "results/CNN_Output/"
 

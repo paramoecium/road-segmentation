@@ -75,9 +75,6 @@ def reconstruction(img_data, size):
     """
     patches_per_dim = size - conf.patch_size + 1
 
-    print("size: {}".format(size))
-    print("patches_per_dim: {}".format(patches_per_dim))
-    print("img_data: {}".format(img_data.shape))
     reconstruction = np.zeros((size,size))
     idx = 0
     for i in range(patches_per_dim):
@@ -123,7 +120,7 @@ def mainFunc(argv):
     targets = np.stack(targets).reshape(-1, conf.patch_size, conf.patch_size) # (20000, 16, 16)
     targets = targets.reshape(len(targets), -1) # (20000, 256)
     print("Shape of targets: {}".format(targets.shape))
-    patches_per_image_train = ( (conf.train_image_size//conf.patch_size) - conf.patch_size+1)**2 ## 100
+    patches_per_image_train = ( 50 - conf.patch_size + 1)**2
     print("Patches per train image: {}".format(patches_per_image_train))
     validation = np.copy(targets[:conf.val_size*patches_per_image_train,:]) # number of validation patches is 500
     targets = np.copy(targets[patches_per_image_train*conf.val_size:,:])
@@ -135,7 +132,7 @@ def mainFunc(argv):
     print("Initializing CNN denoising autoencoder")
     model = cnn_ae(conf.patch_size**2, ## dim of the inputs
                    n_filters=[1, 16, 32, 64],
-                   filter_sizes=[7, 5, 3, 3],
+                   filter_sizes=[9, 7, 5, 3],
                    learning_rate=0.005)
 
     print("Starting TensorFlow session")
@@ -211,11 +208,12 @@ def mainFunc(argv):
                 raise ValueError('no CNN data to run Convolutional Denoising Autoencoder on')
 
             print("Loading test set")
-            patches_per_image_test = ( (conf.test_image_size // conf.patch_size) - conf.patch_size + 1)**2 ## 529
+            patches_per_image_test = ( 38 - conf.patch_size + 1)**2 ## 529
+            print("patches per test image: {}".format(patches_per_image_test))
             test = extract_patches(prediction_test_dir, conf.test_size, conf.patch_size, 'test')
             test = np.stack(test).reshape(-1, conf.patch_size, conf.patch_size) # (n, 16, 16)
             test = test.reshape(len(test), -1) # (n, 256)
-            print("Shape of test: {}".format(test.shape))
+            print("Shape of test: {}".format(test.shape)) # Shape of test: (26450, 256)
 
             predictions = []
             runs = test.shape[0] // conf.batch_size
@@ -230,10 +228,11 @@ def mainFunc(argv):
                 feed_dict = model.make_inputs_predict(batch_inputs)
                 prediction = sess.run(model.y_pred, feed_dict)
                 predictions.append(prediction)
-
-            predictions = np.stack(predictions).reshape(-1, conf.patch_size**2)
-            predictions = predictions.reshape(len(predictions), -1)
-            print("Shape of predictions: {}".format(predictions.shape))
+	    
+            print("individual prediction shape: {}".format(predictions[0].shape))
+            predictions = np.concatenate(predictions, axis=0).reshape(test.shape[0], conf.patch_size**2)
+            #predictions = predictions.reshape(len(predictions), -1)
+            print("Shape of predictions: {}".format(predictions.shape)) 
 
             # Save outputs to disk
             for i in range(conf.test_size):

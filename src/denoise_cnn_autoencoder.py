@@ -64,7 +64,7 @@ def extract_patches(filename_base, num_images, patch_size=conf.patch_size, phase
                 patches.append(image.extract_patches(img, (patch_size, patch_size), extraction_step=1))
     return patches
 
-def reconstruction(img_data, type):
+def reconstruction(img_data, size):
     """
     Reconstruct single image from flattened array
     Args:
@@ -123,10 +123,10 @@ def mainFunc(argv):
     targets = np.stack(targets).reshape(-1, conf.patch_size, conf.patch_size) # (20000, 16, 16)
     targets = targets.reshape(len(targets), -1) # (20000, 256)
     print("Shape of targets: {}".format(targets.shape))
-    patches_per_image_train = ( (train_image_size//conf.patch_size) - conf.patch_size+1)**2 ## 100
+    patches_per_image_train = ( (conf.train_image_size//conf.patch_size) - conf.patch_size+1)**2 ## 100
     print("Patches per train image: {}".format(patches_per_image_train))
-    validation = np.copy(targets[:conf.val_size*patch_per_image_train,:]) # number of validation patches is 500
-    targets = np.copy(targets[patch_per_image_train*conf.val_size:,:])
+    validation = np.copy(targets[:conf.val_size*patches_per_image_train,:]) # number of validation patches is 500
+    targets = np.copy(targets[patches_per_image_train*conf.val_size:,:])
 
     print("Adding noise to training data")
     train = corrupt(targets, conf.corruption)
@@ -192,8 +192,8 @@ def mainFunc(argv):
                 inputs = validation[i*patches_per_image_train:(i+1)*patches_per_image_train,:]
                 feed_dict = model.make_inputs_predict(inputs)
                 encode_decode = sess.run(model.y_pred, feed_dict=feed_dict) ## predictions from model are [batch_size, dim, dim, n_channels] i.e. (3125, 16, 16, 1)
-                print("shape of predictions: {}".format(encode_decode.shape))
-                val = reconstruction(inputs)
+                print("shape of predictions: {}".format(encode_decode.shape)) # (100, 16, 16, 1)
+                val = reconstruction(inputs, 50)
                 pred = reconstruction(encode_decode[:,:,:,0].reshape(-1, conf.patch_size**2), 50) ## train images rescaled to 50 by 50 granularity
                 a[0][i].imshow(val, cmap='gray', interpolation='none')
                 a[1][i].imshow(pred, cmap='gray', interpolation='none')

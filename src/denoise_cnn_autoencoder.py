@@ -64,7 +64,7 @@ def extract_patches(filename_base, num_images, patch_size=conf.patch_size, phase
                 patches.append(image.extract_patches(img, (patch_size, patch_size), extraction_step=1))
     return patches
 
-def reconstruction(img_data, type):
+def reconstruction(img_data, size):
     """
     Reconstruct single image from flattened array
     Args:
@@ -123,7 +123,7 @@ def mainFunc(argv):
     targets = np.stack(targets).reshape(-1, conf.patch_size, conf.patch_size) # (20000, 16, 16)
     targets = targets.reshape(len(targets), -1) # (20000, 256)
     print("Shape of targets: {}".format(targets.shape))
-    patches_per_image_train = ( (train_image_size//conf.patch_size) - conf.patch_size+1)**2 ## 100
+    patches_per_image_train = ( 50 - conf.patch_size + 1)**2
     print("Patches per train image: {}".format(patches_per_image_train))
     validation = np.copy(targets[:conf.val_size*patch_per_image_train,:]) # number of validation patches is 500
     targets = np.copy(targets[patch_per_image_train*conf.val_size:,:])
@@ -211,7 +211,8 @@ def mainFunc(argv):
                 raise ValueError('no CNN data to run Convolutional Denoising Autoencoder on')
 
             print("Loading test set")
-            patches_per_image_test = ( (conf.test_image_size // conf.patch_size) - conf.patch_size + 1)**2 ## 529
+            patches_per_image_test = ( 38 - conf.patch_size + 1)**2 ## 529
+            print("patches per test image: {}".format(patches_per_image_test)
             test = extract_patches(prediction_test_dir, conf.test_size, conf.patch_size, 'test')
             test = np.stack(test).reshape(-1, conf.patch_size, conf.patch_size) # (n, 16, 16)
             test = test.reshape(len(test), -1) # (n, 256)

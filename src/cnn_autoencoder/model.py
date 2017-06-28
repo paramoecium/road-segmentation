@@ -202,11 +202,11 @@ class cnn_ae_ethan():
         output_shape_d_conv2 = tf.stack([tf.shape(self.x)[0], self.w, self.w, 1])
         h_d_conv2 = tf.nn.relu(self.deconv2d(h_d_conv1, W_d_conv2, output_shape_d_conv2))
 
-        self.x_reconstruct = h_d_conv2
-        print("reconstruct layer shape : %s" % self.x_reconstruct.get_shape())
+        self.y_pred = h_d_conv2
+        print("reconstruct layer shape : %s" % self.y_pred.get_shape())
 
     def _init_optimizer(self):
-        self.loss = tf.reduce_mean(tf.pow(self.x_origin - self.x_reconstruct, 2))
+        self.loss = tf.reduce_mean(tf.pow(self.x_origin - self.y_pred, 2))
         self.optimizer = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss)
 
     def _init_summary(self):

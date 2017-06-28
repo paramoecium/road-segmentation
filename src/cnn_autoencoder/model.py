@@ -178,7 +178,7 @@ class cnn_ae_ethan():
 
     def _build_graph(self):
         # Reshaping is important!!!
-        x_origin = tf.reshape(self.x, [-1, self.w, self.w, 1])
+        self.x_origin = tf.reshape(self.x, [-1, self.w, self.w, 1])
         x_origin_noise = tf.reshape(self.x_noise, [-1, self.w, self.w, 1])
 
         W_e_conv1 = self.weight_variable([5, 5, 1, 16], "w_e_conv1")
@@ -206,7 +206,7 @@ class cnn_ae_ethan():
         print("reconstruct layer shape : %s" % self.x_reconstruct.get_shape())
 
     def _init_optimizer(self):
-        self.loss = tf.reduce_mean(tf.pow(self.x - self.x_reconstruct, 2))
+        self.loss = tf.reduce_mean(tf.pow(self.x_origin - self.x_reconstruct, 2))
         self.optimizer = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss)
 
     def _init_summary(self):

@@ -5,6 +5,9 @@ tmp/
 data/
 predictions_training/
 test_set_images/
+*.ipynb
+logs/
+src/*.png
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

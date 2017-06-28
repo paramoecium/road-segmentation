@@ -1,4 +1,4 @@
-""" Auto Encoder Example.
+""" Denoising Auto Encoder
 ref: https://raw.githubusercontent.com/aymericdamien/TensorFlow-Examples/master/examples/3_NeuralNetworks/autoencoder.py
 """
 import math
@@ -38,7 +38,7 @@ class ae():
 
         self._init_encoder()
         if self.skip_arch:
-            self._init_encoder_skip_arch()
+            self._init_decoder_skip_arch()
         else:
             self._init_decoder()
 
@@ -160,7 +160,7 @@ class ae():
             # self.layer_8 = tf.nn.dropout(tf.sigmoid(tf.add(tf.matmul(self.layer_7, self.weights['decoder_h4']),
             #                                         self.biases['decoder_b4'])), keep_prob=self.dropout)
 
-    def _init_encoder_skip_arch(self):
+    def _init_decoder_skip_arch(self):
         with tf.variable_scope("decoder") as scope:
             self.layer_5 = tf.nn.dropout(tf.sigmoid(tf.add(self.layer_2, tf.add(tf.matmul(self.layer_3, self.weights['decoder_h1']), self.biases['decoder_b1']))),
                                          keep_prob=self.dropout)

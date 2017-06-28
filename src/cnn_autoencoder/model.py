@@ -145,8 +145,19 @@ class cnn_ae_ethan():
         self._init_summary()
 
     def _init_placeholders(self):
-        self.x = tf.placeholder(tf.float32, shape = [None, self.w * self.w])
-        self.x_noise = tf.placeholder(tf.float32, shape = [None, self.w * self.w])
+        self.x = tf.placeholder(shape=(None, self.w**2),
+                                dtype=tf.float32,
+                                name='encoder_inputs',
+                                )
+
+        self.x_origin = tf.reshape(self.x, [-1, self.w, self.w, 1])
+
+        self.x_noise = tf.placeholder(shape=(None, self.w**2),
+                                      dtype=tf.float32,
+                                      name='targets',
+                                      )
+
+        self.x_origin_noise = tf.reshape(self.x_noise, [-1, self.w, self.w, 1])
 
     def weight_variable(self, shape, name):
         '''Helper function to create a weight variable initialized with
@@ -177,13 +188,10 @@ class cnn_ae_ethan():
         return tf.nn.conv2d_transpose(x, W, output_shape, strides = [1, 2, 2, 1], padding = 'SAME')
 
     def _build_graph(self):
-        # Reshaping is important!!!
-        self.x_origin = tf.reshape(self.x, [-1, self.w, self.w, 1])
-        x_origin_noise = tf.reshape(self.x_noise, [-1, self.w, self.w, 1])
 
         W_e_conv1 = self.weight_variable([5, 5, 1, 16], "w_e_conv1")
         b_e_conv1 = self.bias_variable([16], "b_e_conv1")
-        h_e_conv1 = tf.nn.relu(tf.add(self.conv2d(x_origin_noise, W_e_conv1), b_e_conv1))
+        h_e_conv1 = tf.nn.relu(tf.add(self.conv2d(self.x_origin_noise, W_e_conv1), b_e_conv1))
 
         W_e_conv2 = self.weight_variable([5, 5, 16, 32], "w_e_conv2")
         b_e_conv2 = self.bias_variable([32], "b_e_conv2")

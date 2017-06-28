@@ -533,7 +533,7 @@ def main(argv=None):  # pylint: disable=unused-argument
     ### SETUP LOSS ###
     ##################
     logits = model(train_data_node, True)
-    losses = tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=train_labels_node)
+    losses = weighted_loss(logits=logits, labels=train_labels_node, num_classes=NUM_LABELS, coefficients=balancing_coefficients, head=None)
     loss = tf.reduce_mean(losses)
     tf.summary.scalar('loss', loss)
 

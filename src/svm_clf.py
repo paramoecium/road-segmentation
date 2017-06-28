@@ -21,8 +21,6 @@ labels_train_cae  = dlm.read_image_array(train_data_filename, num_images, "cnn_a
 
 tmp = []
 for i in range(len(labels_train_cae)):
-    print(i)
-    print(len(labels_train_cae))
     tmp.append(resize(labels_train_cae[i],
                                  (400 // const.POSTPRO_PATCH_SIZE, 400 // const.POSTPRO_PATCH_SIZE),
                                  order=0,
@@ -36,10 +34,8 @@ nTransforms = 0
 patches_train = []
 patches_labels = []
 for i in range(len(labels_train_cae)):
-    patches_train.extend(pem.img_crop(labels_train_cae[i], patch_size, border_size, stride, nTransforms))
+    patches_train.extend(pem.img_crop(tmp[i], patch_size, border_size, stride, nTransforms))
     patches_labels.extend(pem.img_crop(labels[i], 1, 0, stride, nTransforms))
-
-pdb.set_trace()
 
 X = np.asarray([np.ravel(np.squeeze(np.asarray(p))) for p in patches_train])
 y = np.squeeze(np.asarray(patches_labels))

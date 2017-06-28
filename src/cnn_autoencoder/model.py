@@ -1,4 +1,4 @@
-""" CNN Auto Encoder Example.
+""" CNN De-noising Auto Encoder Example.
 ref: https://github.com/pkmital/tensorflow_tutorials/blob/master/python/09_convolutional_autoencoder.py
 """
 import math

@@ -203,12 +203,12 @@ class cnn_ae_ethan():
 
         W_d_conv1 = self.weight_variable([5, 5, 16, 32], "w_d_conv1")
         b_d_conv1 = self.bias_variable([1], "b_d_conv1")
-        output_shape_d_conv1 = tf.stack([tf.shape(self.x)[0], int(self.w/2), int(self.w/2), 16])
+        output_shape_d_conv1 = tf.stack([tf.shape(self.x_noise)[0], int(self.w/2), int(self.w/2), 16])
         h_d_conv1 = tf.nn.relu(self.deconv2d(h_e_conv2, W_d_conv1, output_shape_d_conv1))
 
         W_d_conv2 = self.weight_variable([5, 5, 1, 16], "w_d_conv2")
         b_d_conv2 = self.bias_variable([16], "b_d_conv2")
-        output_shape_d_conv2 = tf.stack([tf.shape(self.x)[0], self.w, self.w, 1])
+        output_shape_d_conv2 = tf.stack([tf.shape(self.x_noise)[0], self.w, self.w, 1])
         h_d_conv2 = tf.nn.relu(self.deconv2d(h_d_conv1, W_d_conv2, output_shape_d_conv2))
 
         self.y_pred = h_d_conv2

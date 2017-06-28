@@ -160,7 +160,7 @@ def mainFunc(argv):
     #                n_filters=[1, 16, 32, 64],
     #                filter_sizes=[7, 5, 3, 3],
     #                learning_rate=conf.learning_rate)
-    model = cnn_ae_ethan(conf.patch_size**2, ## dim of the inputs
+    model = cnn_ae_ethan(conf.patch_size, ## dim of the inputs
                          learning_rate=conf.learning_rate)
 
     print("Starting TensorFlow session")

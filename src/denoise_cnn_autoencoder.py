@@ -94,12 +94,12 @@ def resize_img(img, opt):
     """
     if opt == 'test':
         size = conf.test_image_size
-        steps = 36
-        blocks = 16
+        blocks = 16 # resolution of original test images 16x16 pixels are the same class
+        steps = conf.test_image_size // blocks # 38
     elif opt == 'train':
         size = conf.train_image_size
-        steps = 50
-        blocks = 8
+        blocks = 8 # resolution of the output of the cnn is 8x8 pixels for one class
+        steps = conf.train_image_size // blocks # 50
     else:
         raise ValueError('test or train plz')
     dd = np.zeros((size, size))
@@ -146,7 +146,7 @@ def mainFunc(argv):
     targets = targets.reshape(len(targets), -1) # (122500, 256) for no rot
     train_full = np.copy(targets)
     print("Shape of targets: {}".format(targets.shape))
-    patches_per_image_train = ( 50 - conf.patch_size + 1)**2
+    patches_per_image_train = ( 50 - conf.patch_size + 1)**2 ## 50 is the scaled train img dim since resolution of the cnn is 8x8
     print("Patches per train image: {}".format(patches_per_image_train))
     validation = np.copy(targets[:conf.val_size*patches_per_image_train,:]) # number of validation patches is 500
     targets = np.copy(targets[patches_per_image_train*conf.val_size:,:])
@@ -299,7 +299,7 @@ def mainFunc(argv):
                 output_path = "../results/CNN_Autoencoder_Output/test/"
                 if not os.path.isdir(output_path):
                     raise ValueError('no CNN data to run Convolutional Denoising Autoencoder on')
-                prediction = reconstruction(predictions[i*patches_per_image_test:(i+1)*patches_per_image_test,:], 38)
+                prediction = reconstruction(predictions[i*patches_per_image_test:(i+1)*patches_per_image_test,:], 38) # 38 is the resized test set dim as resolution is 16x16
                 # resizing test images to 608x608 and saving to disk
                 scipy.misc.imsave(output_path + img_name + ".png", resize_img(prediction, 'test'))
 

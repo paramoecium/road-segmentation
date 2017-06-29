@@ -150,11 +150,11 @@ def mainFunc(argv):
     train_data_filename = "../data/training/groundtruth/"
     targets = extract_patches(train_data_filename, conf.train_size, conf.patch_size, 'train')
     targets = np.stack(targets).reshape(-1, conf.patch_size, conf.patch_size) # (20000, 16, 16)
-    targets = targets.reshape(len(targets), -1) # (122500, 256) for no rot
+    targets = targets.reshape(len(targets), -1) # (122500, 256) for no rot (145800, 576) for rot and patch size 24
     train_full = np.copy(targets)
     print("Shape of targets: {}".format(targets.shape))
     patches_per_image_train = ( (conf.train_image_size//conf.gt_res) - conf.patch_size + 1)**2 ## conf.train_image_size//conf.gt_res = 50 res of gt is 8x8
-    print("Patches per train image: {}".format(patches_per_image_train))
+    print("Patches per train image: {}".format(patches_per_image_train)) # 729 for patch size 24
     validation = np.copy(targets[:conf.val_size*patches_per_image_train,:]) # number of validation patches is 500
     targets = np.copy(targets[patches_per_image_train*conf.val_size:,:])
 

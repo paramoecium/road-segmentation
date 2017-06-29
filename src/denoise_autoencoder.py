@@ -82,9 +82,9 @@ def reconstruction(img_data, size):
     """
     patches_per_dim = size - conf.patch_size + 1
 
-    print("size: {}".format(size))
-    print("patches_per_dim: {}".format(patches_per_dim))
-    print("img_data: {}".format(img_data.shape))
+    # print("size: {}".format(size))
+    # print("patches_per_dim: {}".format(patches_per_dim))
+    # print("img_data: {}".format(img_data.shape))
     reconstruction = np.zeros((size,size))
     n = np.zeros((size,size))
     idx = 0
@@ -271,10 +271,10 @@ def mainFunc(argv):
             for i in range(conf.examples_to_show):
                 inputs = validation[i*patches_per_image_train:(i+1)*patches_per_image_train,:]
                 feed_dict = model.make_inputs_predict(inputs)
-                encode_decode = sess.run(model.y_pred, feed_dict=feed_dict) ## TODO: check y_pred object predictions from model are [batch_size, dim, dim, n_channels] i.e. (3125, 16, 16, 1)
-                print("shape of predictions: {}".format(encode_decode.shape)) # (100, 16, 16, 1)
+                encode_decode = sess.run(model.y_pred, feed_dict=feed_dict)
+                print("shape of predictions: {}".format(encode_decode.shape)) # (729, 576)
                 val = reconstruction(inputs, 50)
-                pred = reconstruction(encode_decode.reshape(50, 50), 50) ## TODO train images rescaled to 50 by 50 granularity
+                pred = reconstruction(encode_decode, 50)
                 a[0][i].imshow(val, cmap='gray', interpolation='none')
                 a[1][i].imshow(pred, cmap='gray', interpolation='none')
                 a[0][i].get_xaxis().set_visible(False)

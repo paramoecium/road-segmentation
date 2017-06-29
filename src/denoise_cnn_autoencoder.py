@@ -54,7 +54,7 @@ def extract_patches(filename_base, num_images, patch_size=conf.patch_size, phase
                 img = mpimg.imread(image_filename)
                 img = resize(img, (50,50))
                 patches.append(image.extract_patches(img, (patch_size, patch_size), extraction_step=1))
-                #patches.append(image.extract_patches(np.rot90(img), (patch_size, patch_size), extraction_step=1))
+                patches.append(image.extract_patches(np.rot90(img), (patch_size, patch_size), extraction_step=1))
         if phase == 'test':
             imageid = "raw_test_%d_pixels" % i
             image_filename = filename_base + imageid + ".png"
@@ -66,7 +66,8 @@ def extract_patches(filename_base, num_images, patch_size=conf.patch_size, phase
 
 def reconstruction(img_data, size):
     """
-    Reconstruct single image from flattened array
+    Reconstruct single image from flattened array.
+    IMPORTANT: overlapping patches are averaged, not replaced like in recontrustion()
     Args:
         img_data: flattened image array
         type: size of the image (rescaled)
@@ -75,13 +76,18 @@ def reconstruction(img_data, size):
     """
     patches_per_dim = size - conf.patch_size + 1
 
+    print("size: {}".format(size))
+    print("patches_per_dim: {}".format(patches_per_dim))
+    print("img_data: {}".format(img_data.shape))
     reconstruction = np.zeros((size,size))
+    n = np.zeros((size,size))
     idx = 0
     for i in range(patches_per_dim):
         for j in range(patches_per_dim):
-            reconstruction[i:(i+conf.patch_size),j:(j+conf.patch_size)] =  img_data[idx,:].reshape(conf.patch_size, conf.patch_size)
+            reconstruction[i:(i+conf.patch_size),j:(j+conf.patch_size)] += img_data[idx,:].reshape(conf.patch_size, conf.patch_size)
+            n[i:(i+conf.patch_size),j:(j+conf.patch_size)] += 1
             idx += 1
-    return reconstruction
+    return np.divide(reconstruction, n)
 
 def resize_img(img, opt):
     """
@@ -92,13 +98,14 @@ def resize_img(img, opt):
     Returns:
         numpy array 608x608 for test or 400x400 for train
     """
+    print(img.shape)
     if opt == 'test':
         size = conf.test_image_size
-        blocks = 16 # resolution of original test images 16x16 pixels are the same class
+        blocks = conf.cnn_res # resolution of cnn output of 16x16 pixels are the same class
         steps = conf.test_image_size // blocks # 38
     elif opt == 'train':
         size = conf.train_image_size
-        blocks = 8 # resolution of the output of the cnn is 8x8 pixels for one class
+        blocks = conf.gt_res # resolution of the gt is 8x8 pixels for one class
         steps = conf.train_image_size // blocks # 50
     else:
         raise ValueError('test or train plz')
@@ -146,7 +153,7 @@ def mainFunc(argv):
     targets = targets.reshape(len(targets), -1) # (122500, 256) for no rot
     train_full = np.copy(targets)
     print("Shape of targets: {}".format(targets.shape))
-    patches_per_image_train = ( 50 - conf.patch_size + 1)**2 ## 50 is the scaled train img dim since resolution of the cnn is 8x8
+    patches_per_image_train = ( (conf.train_image_size//conf.gt_res) - conf.patch_size + 1)**2 ## conf.train_image_size//conf.gt_res = 50 res of gt is 8x8
     print("Patches per train image: {}".format(patches_per_image_train))
     validation = np.copy(targets[:conf.val_size*patches_per_image_train,:]) # number of validation patches is 500
     targets = np.copy(targets[patches_per_image_train*conf.val_size:,:])
@@ -242,7 +249,7 @@ def mainFunc(argv):
                 # resizing test images to 400x400 and saving to disk
                 scipy.misc.imsave(output_path + img_name + ".png", resize_img(prediction, 'train'))
 
-        if conf.visualise_training:
+        if conf.visualise_validation:
             print("Visualising encoder results and true images from train set")
             f, a = plt.subplots(2, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
             for i in range(conf.examples_to_show):
@@ -268,7 +275,7 @@ def mainFunc(argv):
                 raise ValueError('no CNN data to run Convolutional Denoising Autoencoder on')
 
             print("Loading test set")
-            patches_per_image_test = ( 38 - conf.patch_size + 1)**2 ## 529
+            patches_per_image_test = ( (conf.test_image_size // conf.cnn_res) - conf.patch_size + 1)**2 ## 608 / 16 = 38, where 16 is the resolution of the CNN output
             print("patches per test image: {}".format(patches_per_image_test))
             test = extract_patches(prediction_test_dir, conf.test_size, conf.patch_size, 'test')
             test = np.stack(test).reshape(-1, conf.patch_size, conf.patch_size) # (n, 16, 16)
@@ -307,7 +314,7 @@ def mainFunc(argv):
 
             f, a = plt.subplots(2, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
             for i in range(conf.examples_to_show):
-                t = reconstruction(test[i*patches_per_image_test:(i+1)*patches_per_image_test,:], 38)
+                t = reconstruction(test[i*patches_per_image_test:(i+1)*patches_per_image_test,:], (conf.test_image_size // conf.cnn_res)) # (conf.test_image_size // conf.cnn_res) = 38
                 pred = reconstruction(predictions[i*patches_per_image_test:(i+1)*patches_per_image_test,:], 38)
                 a[0][i].imshow(t, cmap='gray', interpolation='none')
                 a[1][i].imshow(pred, cmap='gray', interpolation='none')

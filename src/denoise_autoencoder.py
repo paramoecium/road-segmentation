@@ -12,26 +12,23 @@ import getopt
 import pdb
 import math
 import logging
-from skimage.transform import resize
 import scipy
 import scipy.misc
+
+from skimage.transform import resize
+import matplotlib.image as mpimg
+from skimage.transform import resize
+from sklearn.feature_extraction import image
 
 from autoencoder.model import ae
 from autoencoder.ae_config import Config as conf
 
 import patch_extraction_module as pem
 import data_loading_module as dlm
-import constants as const
-from scaling import label_to_img, img_to_label
-from skimage.util.shape import view_as_windows
+
 
 tf.set_random_seed(123)
 np.random.seed(123)
-
-PIXEL_DEPTH = 255
-NUM_LABELS = 2
-NUM_CHANNELS = 3  # RGB images
-
 
 def corrupt(data, nu, type='salt_and_pepper'):
     """
@@ -52,6 +49,77 @@ def corrupt(data, nu, type='salt_and_pepper'):
         tmp[np.logical_and(img_max, idx)] = 0
         tmp[np.logical_and(img_min, idx)] = 1
     return tmp
+
+def extract_patches(filename_base, num_images, patch_size=conf.patch_size, phase='train'):
+    patches = []
+    for i in range(1, num_images+1):
+        if phase == 'train':
+            imageid = "satImage_%.3d" % i
+            image_filename = filename_base + imageid + ".png"
+            if os.path.isfile(image_filename):
+                img = mpimg.imread(image_filename)
+                img = resize(img, (50,50))
+                patches.append(image.extract_patches(img, (patch_size, patch_size), extraction_step=1))
+                patches.append(image.extract_patches(np.rot90(img), (patch_size, patch_size), extraction_step=1))
+        if phase == 'test':
+            imageid = "raw_test_%d_pixels" % i
+            image_filename = filename_base + imageid + ".png"
+            if os.path.isfile(image_filename):
+                img = mpimg.imread(image_filename)
+                img = resize(img, (38,38))
+                patches.append(image.extract_patches(img, (patch_size, patch_size), extraction_step=1))
+    return patches
+
+def reconstruction(img_data, size):
+    """
+    Reconstruct single image from flattened array.
+    IMPORTANT: overlapping patches are averaged, not replaced like in recontrustion()
+    Args:
+        img_data: flattened image array
+        type: size of the image (rescaled)
+    Returns:
+        recontructed image
+    """
+    patches_per_dim = size - conf.patch_size + 1
+
+    print("size: {}".format(size))
+    print("patches_per_dim: {}".format(patches_per_dim))
+    print("img_data: {}".format(img_data.shape))
+    reconstruction = np.zeros((size,size))
+    n = np.zeros((size,size))
+    idx = 0
+    for i in range(patches_per_dim):
+        for j in range(patches_per_dim):
+            reconstruction[i:(i+conf.patch_size),j:(j+conf.patch_size)] += img_data[idx,:].reshape(conf.patch_size, conf.patch_size)
+            n[i:(i+conf.patch_size),j:(j+conf.patch_size)] += 1
+            idx += 1
+    return np.divide(reconstruction, n)
+
+def resize_img(img, opt):
+    """
+    CNN predictions are made at the 36x36 pixel lvl and the test set needs to be at the 608x608
+    lvl. The function resizes.
+    Args:
+        numpy array 36x36 for test or 50x50 for train
+    Returns:
+        numpy array 608x608 for test or 400x400 for train
+    """
+    print(img.shape)
+    if opt == 'test':
+        size = conf.test_image_size
+        blocks = conf.cnn_res # resolution of cnn output of 16x16 pixels are the same class
+        steps = conf.test_image_size // blocks # 38
+    elif opt == 'train':
+        size = conf.train_image_size
+        blocks = conf.gt_res # resolution of the gt is 8x8 pixels for one class
+        steps = conf.train_image_size // blocks # 50
+    else:
+        raise ValueError('test or train plz')
+    dd = np.zeros((size, size))
+    for i in range(steps):
+        for j in range(steps):
+            dd[j*blocks:(j+1)*blocks,i*blocks:(i+1)*blocks] = img[j,i]
+    return dd
 
 
 def mainFunc(argv):
@@ -87,45 +155,19 @@ def mainFunc(argv):
 
     print("loading ground truth data")
     train_data_filename = "../data/training/groundtruth/"
-    targets = dlm.extract_data(train_data_filename,
-                               num_images=conf.train_size,
-                               num_of_transformations=0,
-                               patch_size=conf.train_image_size, # train images are of size 400 for test this needs to be changed
-                               patch_stride=conf.train_image_size, # train images are of size 400 for test this needs to be changed
-                               border_size=0,
-                               zero_center=False)
+    targets = extract_patches(train_data_filename, conf.train_size, conf.patch_size, 'train')
+    targets = np.stack(targets).reshape(-1, conf.patch_size, conf.patch_size) # (20000, 16, 16)
+    targets = targets.reshape(len(targets), -1) # (122500, 256) for no rot (145800, 576) for rot and patch size 24
+    train_full = np.copy(targets)
+    print("Shape of targets: {}".format(targets.shape))
+    patches_per_image_train = ( (conf.train_image_size//conf.gt_res) - conf.patch_size + 1)**2 ## conf.train_image_size//conf.gt_res = 50 res of gt is 8x8
+    print("Patches per train image: {}".format(patches_per_image_train)) # 729 for patch size 24
+    validation = np.copy(targets[:conf.val_size*patches_per_image_train,:]) # number of validation patches is 500
+    targets = np.copy(targets[patches_per_image_train*conf.val_size:,:])
 
-    # The output of the CNN is predictions of size 608x608, the prediction is made on patches of size 8x8.
-    # Hence the denoising with be on made on images of size 76x76. Hence the training of the denoising autoencoder
-    # Is made on the training data (size 400x400) resized (spline interpolation) to 76x76
-    print("Resizing ground truth images so that patches from CNN are now pixels")
-    targets_patch_lvl = np.zeros((targets.shape[0], conf.test_image_resize, conf.test_image_resize))
-    for i in range(targets.shape[0]):
-        targets_patch_lvl[i,:,:] = resize(targets[i,0,:,:],
-                                          (conf.test_image_resize, conf.test_image_resize),
-                                          order=0, preserve_range=True)
-        # targets_patch_lvl[i,:,:] = img_to_label(conf.test_image_resize, conf.test_image_resize,
-        #                                         conf.cnn_pred_size, conf.cnn_pred_size,
-        #                                         targets[i,0,:,:])
-
-    print("New shape of each image: {}".format(targets_patch_lvl.shape))
-
-    del targets # Deleting original data to free space
-
-    print("Training and eval data for DAE")
-    train = corrupt(targets_patch_lvl, conf.corruption)
-    validation = corrupt(targets_patch_lvl, conf.corruption)
-    targets = np.copy(targets_patch_lvl)
-    for i in range(99):
-        train = np.append(train,
-                  	      corrupt(targets_patch_lvl, conf.corruption),
-                  	      axis=0)
-        targets = np.append(targets,
-                            targets_patch_lvl,
-                            axis=0)
-    print("Shape of training data: {}".format(train.shape))
-    print("Shape of targets data: {}".format(targets.shape))
-    n = train.shape[0]
+    print("Adding noise to training data")
+    train = corrupt(targets, conf.corruption)
+    validation = corrupt(validation, conf.corruption)
 
     print("Initializing model")
     print("Input size: {}".format(int(conf.test_image_resize*conf.test_image_resize)))
@@ -141,7 +183,7 @@ def mainFunc(argv):
                ##n_hidden_4=int(conf.test_image_resize*conf.test_image_resize/conf.ae_step/conf.ae_step/conf.ae_step/conf.ae_step),
                learning_rate=conf.learning_rate,
                dropout=conf.dropout_train,
-               skip_arch=True)
+               skip_arch=False)
 
     print("Starting TensorFlow session")
     with tf.Session(config=configProto) as sess:
@@ -171,155 +213,144 @@ def mainFunc(argv):
                 print("Time elapsed:    %.3fs" % (time.time() - start))
                 #logging.info("Time elapsed:    %.3fs" % (time.time() - start))
 
+            n = train.shape[0]
             perm_idx = np.random.permutation(n)
             batch_index = 1
             for step in range(int(n / conf.batch_size)):
                 offset = (batch_index*conf.batch_size) % (n - conf.batch_size)
                 batch_indices = perm_idx[offset:(offset + conf.batch_size)]
 
-                batch_inputs = train[batch_indices,:,:].reshape((conf.batch_size, conf.test_image_resize**2))
-                batch_targets = targets[batch_indices,:,:].reshape((conf.batch_size, conf.test_image_resize**2))
-
-                ##print("shape of batch inputs: {0} and outputs: {1}".format(batch_inputs.shape, batch_targets.shape))
-
-                ##pdb.set_trace()
+                batch_inputs = train[batch_indices,:]
+                batch_targets = targets[batch_indices,:]
                 feed_dict = model.make_inputs(batch_inputs, batch_targets)
-                if global_step % conf.validation_summary_frequency == 0:
-                    pass
-                else:
-                    _, train_summary = sess.run([model.optimizer, model.summary_op], feed_dict)
-                    train_writer.add_summary(train_summary, global_step)
 
-                if global_step % conf.checkpoint_frequency == 0:
-                    # traing is quick, no need to save checkpoints for every checkpoint frequency
-                    # saver.save(sess, os.path.join(train_logfolderPath, "{}-{}-ep{}.ckpt".format(tag_string, timestamp, i)), global_step=global_step)
-                    pass
+                _, train_summary = sess.run([model.optimizer, model.summary_op], feed_dict)
+                train_writer.add_summary(train_summary, global_step)
+
                 global_step += 1
                 batch_index += 1
 
         saver.save(sess, os.path.join(train_logfolderPath, "{}-{}-ep{}-final.ckpt".format(tag_string, timestamp, conf.num_epochs)))
-        print("Done with training for {} epochs".format(conf.num_epochs))
 
-        if conf.visualise_training:
-            print("Visualising encoder results and true images from train set")
-            # Applying encode and decode over test set
-            # One batch for eval
-            data_eval = validation[:conf.batch_size,:,:]
-            data_eval_fd = data_eval.reshape((conf.batch_size, conf.test_image_resize**2))
-            targets_eval = targets[:conf.batch_size,:,:]
-            feed_dict = model.make_inputs_predict(data_eval_fd)
-            encode_decode = sess.run(model.y_pred, feed_dict=feed_dict)
-            print("shape of predictions: {}".format(encode_decode.shape))
-            # Compare original images with their reconstructions
-            f, a = plt.subplots(3, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
-            for i in range(conf.examples_to_show):
-                a[0][i].imshow(np.reshape(data_eval[i,:,:], (conf.test_image_resize, conf.test_image_resize)))
-                a[1][i].imshow(np.reshape(targets_eval[i,:,:], (conf.test_image_resize, conf.test_image_resize)))
-                im = a[2][i].imshow(np.reshape(encode_decode[i], (conf.test_image_resize, conf.test_image_resize)))
-            plt.colorbar(im)
-            plt.savefig('./autoencoder_eval_{}.png'.format(tag))
-
-        print("Deleting train and targets objects")
+        # Deleting train and targets objects
         del train
         del targets
+
+        if conf.run_on_train_set:
+            print("Running Convolutional Autoencoder on training images for upstream classification")
+            predictions = []
+            runs = train_full.shape[0] // conf.batch_size
+            rem = train_full.shape[0] % conf.batch_size
+            for i in range(runs):
+                batch_inputs = train_full[i*conf.batch_size:((i+1)*conf.batch_size),:]
+                feed_dict = model.make_inputs_predict(batch_inputs)
+                prediction = sess.run(model.y_pred, feed_dict)
+                predictions.append(prediction)
+            if rem > 0:
+                batch_inputs = train_full[runs*conf.batch_size:(runs*conf.batch_size + rem),:]
+                feed_dict = model.make_inputs_predict(batch_inputs)
+                prediction = sess.run(model.y_pred, feed_dict)
+                predictions.append(prediction)
+
+            print("individual prediction shape: {}".format(predictions[0].shape))
+            predictions = np.concatenate(predictions, axis=0).reshape(train_full.shape[0], conf.patch_size**2)
+            #predictions = predictions.reshape(len(predictions), -1)
+            print("Shape of predictions: {}".format(predictions.shape)) # (116375, 256)
+
+            # Save outputs to disk
+            for i in range(conf.train_size):
+                print("Train img: " + str(i+1))
+                img_name = "ae_train_" + str(i+1)
+                output_path = "../results/Autoencoder_Output/train/"
+                if not os.path.isdir(output_path):
+                    raise ValueError('no directory to store Denoising Autoencoder train results in')
+                prediction = reconstruction(predictions[i*patches_per_image_train:(i+1)*patches_per_image_train,:], 50)
+                # resizing test images to 400x400 and saving to disk
+                scipy.misc.imsave(output_path + img_name + ".png", resize_img(prediction, 'train'))
+
+
+        if conf.visualise_validation:
+            print("Visualising encoder results and true images from train set")
+            f, a = plt.subplots(2, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
+            for i in range(conf.examples_to_show):
+                inputs = validation[i*patches_per_image_train:(i+1)*patches_per_image_train,:]
+                feed_dict = model.make_inputs_predict(inputs)
+                encode_decode = sess.run(model.y_pred, feed_dict=feed_dict) ## TODO: check y_pred object predictions from model are [batch_size, dim, dim, n_channels] i.e. (3125, 16, 16, 1)
+                print("shape of predictions: {}".format(encode_decode.shape)) # (100, 16, 16, 1)
+                val = reconstruction(inputs, 50)
+                pred = reconstruction(encode_decode.reshape(50, 50), 50) ## TODO train images rescaled to 50 by 50 granularity
+                a[0][i].imshow(val, cmap='gray', interpolation='none')
+                a[1][i].imshow(pred, cmap='gray', interpolation='none')
+                a[0][i].get_xaxis().set_visible(False)
+                a[0][i].get_yaxis().set_visible(False)
+                a[1][i].get_xaxis().set_visible(False)
+                a[1][i].get_yaxis().set_visible(False)
+            plt.gray()
+            plt.savefig('./autoencoder_eval_{}.png'.format(tag))
 
         if conf.run_on_test_set:
             print("DAE on the predictions")
             prediction_test_dir = "../results/CNN_Output/test/high_res_raw/"
-            output_path_raw = "../results/Autoencoder_Output/raw/"
             if not os.path.isdir(prediction_test_dir):
-                raise ValueError('no CNN data to run denoising autoencoder on')
+                raise ValueError('no CNN data to run Convolutional Denoising Autoencoder on')
+
+            # prediction_test_dir = "../results/CNN_Output/test/high_res_raw/"
+            # output_path_raw = "../results/Autoencoder_Output/raw/"
+            # if not os.path.isdir(prediction_test_dir):
+            #     raise ValueError('no CNN data to run denoising autoencoder on')
 
             print("Loading test set")
-            test = dlm.extract_data(prediction_test_dir,
-                                    num_images=conf.test_size,
-                                    num_of_transformations=0,
-                                    patch_size=conf.test_image_size, # train images are of size 400 for test this needs to be changed
-                                    patch_stride=conf.test_image_size, # train images are of size 400 for test this needs to be changed
-                                    border_size=0,
-                                    zero_center=False,
-                                    autoencoder=True)
+            patches_per_image_test = ( (conf.test_image_size // conf.cnn_res) - conf.patch_size + 1)**2 ## 608 / 16 = 38, where 16 is the resolution of the CNN output
+            print("patches per test image: {}".format(patches_per_image_test))
+            test = extract_patches(prediction_test_dir, conf.test_size, conf.patch_size, 'test')
+            test = np.stack(test).reshape(-1, conf.patch_size, conf.patch_size) # (n, 16, 16)
+            test = test.reshape(len(test), -1) # (n, 256)
+            print("Shape of test: {}".format(test.shape)) # Shape of test: (26450, 256)
 
-            print("Shape of test set: {}".format(test.shape))
-            # resize the images
-            print("Resizing test images so that patches from CNN are now pixels")
-            test_patch_lvl = np.zeros((test.shape[0], conf.test_image_resize, conf.test_image_resize))
-            for i in range(test.shape[0]):
-                test_patch_lvl[i,:,:] = resize(test[i,0,:,:],
-                                               (conf.test_image_resize, conf.test_image_resize),
-                                               order=0, preserve_range=True)
+            predictions = []
+            runs = test.shape[0] // conf.batch_size
+            rem = test.shape[0] % conf.batch_size
+            for i in range(runs):
+                batch_inputs = test[i*conf.batch_size:((i+1)*conf.batch_size),:]
+                feed_dict = model.make_inputs_predict(batch_inputs)
+                prediction = sess.run(model.y_pred, feed_dict) ## numpy array (50, 76, 76, 1)
+                predictions.append(prediction)
+            if rem > 0:
+                batch_inputs = test[runs*conf.batch_size:(runs*conf.batch_size + rem),:]
+                feed_dict = model.make_inputs_predict(batch_inputs)
+                prediction = sess.run(model.y_pred, feed_dict)
+                predictions.append(prediction)
 
-            print("New shape of each image: {}".format(test_patch_lvl.shape))
-            del test
-
-            batch_inputs = test_patch_lvl.reshape((conf.test_size, conf.test_image_resize**2))
-            feed_dict = model.make_inputs_predict(batch_inputs)
-            predictions = sess.run(model.y_pred, feed_dict) ## numpy array (50, 5776)
-            print("shape of predictions: {}".format(predictions.shape))
-
-            #     Saves a single image prediction to disk as a png file
-            #     From model_large_context
-            #     Args:
-            #         Prediction: numpy array with prediction
-            #         output_path: str
-            #     Returns:
-            #         Null
-            #     """
-            #     print("output path: {}".format(output_path))
-            #     pdb.set_trace()
-            #
-            #     def pixels_to_patches(img, round=False, foreground_threshold=0.5, stride=conf.cnn_pred_size):
-            #         """
-            #         Smoothing an up sampled/upscaled img
-            #         """
-            #         res_img = np.zeros(img.shape)
-            #         for i in range(0, img.shape[0], stride):
-            #             for j in range(0, img.shape[1], stride):
-            #                 tmp = np.zeros((stride, stride))
-            #                 tmp[0: stride, 0: stride] = img[j: j + stride, i: i + stride]
-            #                 tmp[tmp < 0.5] = 0
-            #                 tmp[tmp >= 0.5] = 1
-            #                 res_img[j: j + stride, i: i + stride] = np.mean(tmp)
-            #
-            #                 # res_img[j : j + stride, i : i + stride] = np.mean(img[j : j + stride, i : i + stride])
-            #                 if round:
-            #                     if res_img[j, i] >= foreground_threshold:
-            #                         res_img[j: j + stride, i: i + stride] = 1
-            #                     else:
-            #                         res_img[j: j + stride, i: i + stride] = 0
-            #         return res_img
-            #
-            #     # Show per pixel probabilities
-            #     prediction_as_per_pixel_img = label_to_img(conf.test_image_size,
-            #                                                conf.test_image_size,
-            #                                                conf.cnn_pred_size,
-            #                                                conf.cnn_pred_size,
-            #                                                prediction)
-            #     # Show per patch probabilities
-            #     prediction_as_img = pixels_to_patches(prediction_as_per_pixel_img)
-            #
-            #     # Raw image
-            #     scipy.misc.imsave(output_path.replace("/raw/", "/high_res_raw/") + "_pixels.png",
-            #                       prediction_as_per_pixel_img)
-            #     scipy.misc.imsave(output_path + "_patches.png", prediction_as_img)
+            print("individual prediction shape: {}".format(predictions[0].shape))
+            predictions = np.concatenate(predictions, axis=0).reshape(test.shape[0], conf.patch_size**2)
+            #predictions = predictions.reshape(len(predictions), -1)
+            print("Shape of predictions: {}".format(predictions.shape))
 
             # Save outputs to disk
-            for i in range(1, conf.test_size+1):
-                print("Test img: " + str(i))
-                img_name = "ae_test_" + str(i)
-                output_path = "../results/Autoencoder_Output/tmp/" + img_name
-                prediction = np.reshape(predictions[i-1,:], (conf.test_image_resize, conf.test_image_resize))
-                #save_prediction(prediction, output_path)
-                scipy.misc.imsave(output_path + ".png", prediction)
+            for i in range(conf.test_size):
+                print("Test img: " + str(i+1))
+                img_name = "ae_test_" + str(i+1)
+                output_path = "../results/Autoencoder_Output/test/"
+                if not os.path.isdir(output_path):
+                    raise ValueError('no CNN data to run Convolutional Denoising Autoencoder on')
+                prediction = reconstruction(predictions[i*patches_per_image_test:(i+1)*patches_per_image_test,:], 38) # 38 is the resized test set dim as resolution is 16x16
+                # resizing test images to 608x608 and saving to disk
+                scipy.misc.imsave(output_path + img_name + ".png", resize_img(prediction, 'test'))
 
             f, a = plt.subplots(2, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
             for i in range(conf.examples_to_show):
-                a[0][i].imshow(np.reshape(test_patch_lvl[i,:,:], (conf.test_image_resize, conf.test_image_resize)))
-                im = a[1][i].imshow(np.reshape(predictions[i], (conf.test_image_resize, conf.test_image_resize)))
-            plt.colorbar(im)
+                t = reconstruction(test[i*patches_per_image_test:(i+1)*patches_per_image_test,:], (conf.test_image_size // conf.cnn_res)) # (conf.test_image_size // conf.cnn_res) = 38
+                pred = reconstruction(predictions[i*patches_per_image_test:(i+1)*patches_per_image_test,:], 38)
+                a[0][i].imshow(t, cmap='gray', interpolation='none')
+                a[1][i].imshow(pred, cmap='gray', interpolation='none')
+                a[0][i].get_xaxis().set_visible(False)
+                a[0][i].get_yaxis().set_visible(False)
+                a[1][i].get_xaxis().set_visible(False)
+                a[1][i].get_yaxis().set_visible(False)
+            plt.gray()
             plt.savefig('./autoencoder_prediction_{}.png'.format(tag))
 
-            print("Finished saving autoencoder outputs to disk")
+            print("Finished saving autoencoder test set to disk")
 
 if __name__ == "__main__":
     #logging.basicConfig(filename='autoencoder.log', level=logging.DEBUG)

@@ -14,7 +14,6 @@ import logging
 import scipy
 import scipy.misc
 import matplotlib.image as mpimg
-from skimage.util.shape import view_as_windows
 from skimage.transform import resize
 from sklearn.feature_extraction import image
 

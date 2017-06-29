@@ -20,6 +20,7 @@ from sklearn.feature_extraction import image
 
 from cnn_autoencoder.model import cnn_ae, cnn_ae_ethan
 from cnn_autoencoder.cnn_ae_config import Config as conf
+from scipy.ndimage.interpolation import rotate
 
 tf.set_random_seed(123)
 np.random.seed(123)
@@ -54,7 +55,12 @@ def extract_patches(filename_base, num_images, patch_size=conf.patch_size, phase
                 img = mpimg.imread(image_filename)
                 img = resize(img, (50,50))
                 patches.append(image.extract_patches(img, (patch_size, patch_size), extraction_step=1))
-                patches.append(image.extract_patches(np.rot90(img), (patch_size, patch_size), extraction_step=1))
+                rot90img = rotate(img, 90, reshape=False, mode='reflect', order=3)
+                patches.append(image.extract_patches(rot90img, (patch_size, patch_size), extraction_step=1))
+                rot45img = rotate(img, 45, reshape=False, mode='reflect', order=3)
+                patches.append(image.extract_patches(rot45img, (patch_size, patch_size), extraction_step=1))
+                rot135img = rotate(img, 135, reshape=False, mode='reflect', order=3)
+                patches.append(image.extract_patches(rot135img, (patch_size, patch_size), extraction_step=1))
         if phase == 'test':
             imageid = "raw_test_%d_pixels" % i
             image_filename = filename_base + imageid + ".png"

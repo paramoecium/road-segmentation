@@ -217,7 +217,6 @@ def mainFunc(argv):
             rem = train_full.shape[0] % conf.batch_size
             for i in range(runs):
                 batch_inputs = train_full[i*conf.batch_size:((i+1)*conf.batch_size),:]
-                print(batch_inputs.shape)
                 feed_dict = model.make_inputs_predict(batch_inputs)
                 prediction = sess.run(model.y_pred, feed_dict) ## numpy array (50, 76, 76, 1)
                 predictions.append(prediction)

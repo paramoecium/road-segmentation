@@ -1,5 +1,5 @@
 class Config():
-    num_epochs = 1
+    num_epochs = 20
     validation_summary_frequency = 1000
     checkpoint_frequency = 1000
     batch_size = 32
@@ -15,8 +15,8 @@ class Config():
     patch_size = 24
     dropout_train = 1.0
     learning_rate = 0.005
-    ae_step = 2
+    ae_step = 8
     corruption = 0.075
-    visualise_validation = False
+    visualise_validation = True
     run_on_test_set = True
-    run_on_train_set = False
+    run_on_train_set = True

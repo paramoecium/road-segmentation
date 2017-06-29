@@ -104,7 +104,7 @@ def resize_img(img, opt):
     Returns:
         numpy array 608x608 for test or 400x400 for train
     """
-    print(img.shape)
+    #print(img.shape)
     if opt == 'test':
         size = conf.test_image_size
         blocks = conf.cnn_res # resolution of cnn output of 16x16 pixels are the same class

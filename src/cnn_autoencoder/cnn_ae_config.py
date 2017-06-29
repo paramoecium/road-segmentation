@@ -20,4 +20,4 @@ class Config():
     corruption = 0.075
     visualise_validation = False
     run_on_test_set = True
-    run_on_train_set = False
+    run_on_train_set = True

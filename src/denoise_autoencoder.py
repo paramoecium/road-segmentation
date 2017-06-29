@@ -158,7 +158,6 @@ def mainFunc(argv):
     targets = extract_patches(train_data_filename, conf.train_size, conf.patch_size, 'train')
     targets = np.stack(targets).reshape(-1, conf.patch_size, conf.patch_size) # (20000, 16, 16)
     targets = targets.reshape(len(targets), -1) # (122500, 256) for no rot (145800, 576) for rot and patch size 24
-    train_full = np.copy(targets)
     print("Shape of targets: {}".format(targets.shape))
     patches_per_image_train = ( (conf.train_image_size//conf.gt_res) - conf.patch_size + 1)**2 ## conf.train_image_size//conf.gt_res = 50 res of gt is 8x8
     print("Patches per train image: {}".format(patches_per_image_train)) # 729 for patch size 24
@@ -203,11 +202,8 @@ def mainFunc(argv):
 
         print("Starting training")
         for i in range(conf.num_epochs):
-            if i % 10 == 0:
-                print("Training epoch {}".format(i))
-                #logging.info("Training epoch {}".format(i))
-                print("Time elapsed:    %.3fs" % (time.time() - start))
-                #logging.info("Time elapsed:    %.3fs" % (time.time() - start))
+            print("Training epoch {}".format(i))
+            print("Time elapsed:    %.3fs" % (time.time() - start))
 
             n = train.shape[0]
             perm_idx = np.random.permutation(n)
@@ -233,7 +229,19 @@ def mainFunc(argv):
         del targets
 
         if conf.run_on_train_set:
-            print("Running Convolutional Autoencoder on training images for upstream classification")
+            print("Running Denoising Autoencoder on training images for upstream classification")
+            prediction_train_dir = "../results/CNN_Output/train/high_res_raw/"
+            if not os.path.isdir(prediction_train_dir):
+                raise ValueError('no CNN train data to run Denoising Autoencoder on')
+
+            print("Loading train set")
+            patches_per_image_test = ( (conf.test_image_size // conf.cnn_res) - conf.patch_size + 1)**2
+            print("patches per test image: {}".format(patches_per_image_test))
+            train_full = extract_patches(prediction_train_dir, conf.train_size, conf.patch_size, 'train')
+            train_full = np.stack(train_full).reshape(-1, conf.patch_size, conf.patch_size)
+            train_full = test.reshape(len(train_full), -1)
+            print("Shape of test: {}".format(train_full.shape))
+
             predictions = []
             runs = train_full.shape[0] // conf.batch_size
             rem = train_full.shape[0] % conf.batch_size
@@ -290,18 +298,13 @@ def mainFunc(argv):
             if not os.path.isdir(prediction_test_dir):
                 raise ValueError('no CNN data to run Convolutional Denoising Autoencoder on')
 
-            # prediction_test_dir = "../results/CNN_Output/test/high_res_raw/"
-            # output_path_raw = "../results/Autoencoder_Output/raw/"
-            # if not os.path.isdir(prediction_test_dir):
-            #     raise ValueError('no CNN data to run denoising autoencoder on')
-
             print("Loading test set")
             patches_per_image_test = ( (conf.test_image_size // conf.cnn_res) - conf.patch_size + 1)**2 ## 608 / 16 = 38, where 16 is the resolution of the CNN output
-            print("patches per test image: {}".format(patches_per_image_test))
+            print("patches per test image: {}".format(patches_per_image_test)) # 225
             test = extract_patches(prediction_test_dir, conf.test_size, conf.patch_size, 'test')
-            test = np.stack(test).reshape(-1, conf.patch_size, conf.patch_size) # (n, 16, 16)
-            test = test.reshape(len(test), -1) # (n, 256)
-            print("Shape of test: {}".format(test.shape)) # Shape of test: (26450, 256)
+            test = np.stack(test).reshape(-1, conf.patch_size, conf.patch_size)
+            test = test.reshape(len(test), -1)
+            print("Shape of test: {}".format(test.shape)) # (11250, 576)
 
             predictions = []
             runs = test.shape[0] // conf.batch_size
@@ -309,7 +312,7 @@ def mainFunc(argv):
             for i in range(runs):
                 batch_inputs = test[i*conf.batch_size:((i+1)*conf.batch_size),:]
                 feed_dict = model.make_inputs_predict(batch_inputs)
-                prediction = sess.run(model.y_pred, feed_dict) ## numpy array (50, 76, 76, 1)
+                prediction = sess.run(model.y_pred, feed_dict)
                 predictions.append(prediction)
             if rem > 0:
                 batch_inputs = test[runs*conf.batch_size:(runs*conf.batch_size + rem),:]
@@ -317,10 +320,10 @@ def mainFunc(argv):
                 prediction = sess.run(model.y_pred, feed_dict)
                 predictions.append(prediction)
 
-            print("individual prediction shape: {}".format(predictions[0].shape))
+            print("individual prediction shape: {}".format(predictions[0].shape)) # (32, 576)
             predictions = np.concatenate(predictions, axis=0).reshape(test.shape[0], conf.patch_size**2)
             #predictions = predictions.reshape(len(predictions), -1)
-            print("Shape of predictions: {}".format(predictions.shape))
+            print("Shape of predictions: {}".format(predictions.shape)) # (11250, 576)
 
             # Save outputs to disk
             for i in range(conf.test_size):

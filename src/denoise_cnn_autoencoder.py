@@ -89,6 +89,18 @@ def reconstruction(img_data, size):
             idx += 1
     return np.divide(reconstruction, n)
 
+def binarize(image):
+    """
+    Binarizes an image with the threshold defined in the AE config
+    :param image: The image to binarize. Most likely a low-res image where each pixel
+                  represents a patch
+    :return: An image where each pixel larger than the threshold is set to 1,
+             and otherwise set to 0.
+    """
+    binarized = np.zeros(image.shape)
+    binarized[image > conf.binarize_threshold] = 1
+    return binarized
+
 def resize_img(img, opt):
     """
     CNN predictions are made at the 36x36 pixel lvl and the test set needs to be at the 608x608
@@ -306,12 +318,19 @@ def mainFunc(argv):
                 print("Test img: " + str(i+1))
                 img_name = "cnn_ae_test_" + str(i+1)
                 output_path = "../results/CNN_Autoencoder_Output/test/"
-                if not os.path.isdir(output_path):
-                    raise ValueError('no CNN data to run Convolutional Denoising Autoencoder on')
+                binarize_output_path = os.path.join(output_path, "binarized/")
+                if not os.path.exists(output_path):
+                    os.makedirs(output_path)
+                if not os.path.exists(binarize_output_path):
+                    os.makedirs(binarize_output_path)
                 prediction = reconstruction(predictions[i*patches_per_image_test:(i+1)*patches_per_image_test,:], 38) # 38 is the resized test set dim as resolution is 16x16
+                binarized_prediction = binarize(prediction)
                 # resizing test images to 608x608 and saving to disk
-                scipy.misc.imsave(output_path + img_name + ".png", resize_img(prediction, 'test'))
+                resized_greylevel_output_images = resize_img(prediction, 'test')
+                scipy.misc.imsave(output_path + img_name + ".png", resized_greylevel_output_images)
 
+                resized_binarized_output_images = resize_img(binarized_prediction, 'test')
+                scipy.misc.imsave(binarize_output_path + img_name + ".png", resized_binarized_output_images)
             f, a = plt.subplots(2, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
             for i in range(conf.examples_to_show):
                 t = reconstruction(test[i*patches_per_image_test:(i+1)*patches_per_image_test,:], (conf.test_image_size // conf.cnn_res)) # (conf.test_image_size // conf.cnn_res) = 38

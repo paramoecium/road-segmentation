@@ -54,13 +54,22 @@ def extract_patches(filename_base, num_images, patch_size=conf.patch_size, phase
                 img = resize(img, (50,50))
                 patches.append(image.extract_patches(img, (patch_size, patch_size), extraction_step=1))
                 patches.append(image.extract_patches(np.rot90(img), (patch_size, patch_size), extraction_step=1))
-        if phase == 'test':
+        elif phase == 'test':
             imageid = "raw_test_%d_pixels" % i
             image_filename = filename_base + imageid + ".png"
             if os.path.isfile(image_filename):
                 img = mpimg.imread(image_filename)
                 img = resize(img, (38,38))
                 patches.append(image.extract_patches(img, (patch_size, patch_size), extraction_step=1))
+        elif phase == 'train_cnn_output':
+            imageid = "raw_satImage_%.3d_pixels" % i
+            image_filename = filename_base + imageid + ".png"
+            if os.path.isfile(image_filename):
+                img = mpimg.imread(image_filename)
+                img = resize(img, (50,50))
+                patches.append(image.extract_patches(img, (patch_size, patch_size), extraction_step=1))
+        else:
+            raise ValueError('incorrect phase')
     return patches
 
 def reconstruction(img_data, size):
@@ -75,9 +84,9 @@ def reconstruction(img_data, size):
     """
     patches_per_dim = size - conf.patch_size + 1
 
-    print("size: {}".format(size))
-    print("patches_per_dim: {}".format(patches_per_dim))
-    print("img_data: {}".format(img_data.shape))
+    # print("size: {}".format(size))
+    # print("patches_per_dim: {}".format(patches_per_dim))
+    # print("img_data: {}".format(img_data.shape))
     reconstruction = np.zeros((size,size))
     n = np.zeros((size,size))
     idx = 0
@@ -97,7 +106,7 @@ def resize_img(img, opt):
     Returns:
         numpy array 608x608 for test or 400x400 for train
     """
-    print(img.shape)
+    #print(img.shape)
     if opt == 'test':
         size = conf.test_image_size
         blocks = conf.cnn_res # resolution of cnn output of 16x16 pixels are the same class
@@ -150,7 +159,6 @@ def mainFunc(argv):
     targets = extract_patches(train_data_filename, conf.train_size, conf.patch_size, 'train')
     targets = np.stack(targets).reshape(-1, conf.patch_size, conf.patch_size) # (20000, 16, 16)
     targets = targets.reshape(len(targets), -1) # (122500, 256) for no rot (145800, 576) for rot and patch size 24
-    train_full = np.copy(targets)
     print("Shape of targets: {}".format(targets.shape))
     patches_per_image_train = ( (conf.train_image_size//conf.gt_res) - conf.patch_size + 1)**2 ## conf.train_image_size//conf.gt_res = 50 res of gt is 8x8
     print("Patches per train image: {}".format(patches_per_image_train)) # 729 for patch size 24
@@ -217,14 +225,23 @@ def mainFunc(argv):
         del targets
 
         if conf.run_on_train_set:
-            print("Running Convolutional Autoencoder on training images for upstream classification")
+            print("Running Convolutional Denoising Autoencoder on training images for upstream classification")
+            prediction_train_dir = "../results/CNN_Output/training/high_res_raw/"
+            if not os.path.isdir(prediction_train_dir):
+                raise ValueError('no CNN train data to run Denoising Autoencoder on')
+
+            print("Loading train set")
+            train_full = extract_patches(prediction_train_dir, conf.train_size, conf.patch_size, 'train_cnn_output')
+            train_full = np.stack(train_full).reshape(-1, conf.patch_size, conf.patch_size)
+            train_full = train_full.reshape(len(train_full), -1)
+            print("Shape of train: {}".format(train_full.shape))
             predictions = []
             runs = train_full.shape[0] // conf.batch_size
             rem = train_full.shape[0] % conf.batch_size
             for i in range(runs):
                 batch_inputs = train_full[i*conf.batch_size:((i+1)*conf.batch_size),:]
                 feed_dict = model.make_inputs_predict(batch_inputs)
-                prediction = sess.run(model.y_pred, feed_dict) ## numpy array (50, 76, 76, 1)
+                prediction = sess.run(model.y_pred, feed_dict)
                 predictions.append(prediction)
             if rem > 0:
                 batch_inputs = train_full[runs*conf.batch_size:(runs*conf.batch_size + rem),:]
@@ -234,8 +251,7 @@ def mainFunc(argv):
 
             print("individual prediction shape: {}".format(predictions[0].shape))
             predictions = np.concatenate(predictions, axis=0).reshape(train_full.shape[0], conf.patch_size**2)
-            #predictions = predictions.reshape(len(predictions), -1)
-            print("Shape of predictions: {}".format(predictions.shape)) # (116375, 256)
+            print("Shape of predictions: {}".format(predictions.shape))
 
             # Save outputs to disk
             for i in range(conf.train_size):

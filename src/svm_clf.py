@@ -136,21 +136,22 @@ y_new = clf.predict(test)
 acc = f1_score(test_targets, y_new)
 print("Postprocessing training set f1 score: " + str(acc))
 
-print("Prediction on Convolutional autoencoder test outputs")
-test_data_filename = "../results/CNN_Autoencoder_Output/test/"
-dd = _extract_data_svm(test_data_filename, num_images=2,
+if False:
+    print("Prediction on Convolutional autoencoder test outputs")
+    test_data_filename = "../results/CNN_Autoencoder_Output/test/"
+    dd = _extract_data_svm(test_data_filename, num_images=2,
                           patch_stride=1,
                           border_size=5,
                           phase='test')
-d = np.stack(dd).reshape([-1,11*11])
-import scipy
-output_dir = '../results/SVM/'
-output_images = []
-num_preds_per_image = 1444 # 38**2
-for i in range(2):
-    img = d[i*num_preds_per_image:(i+1)*num_preds_per_image, :]
-    output = clf.predict(img)
-    print("shape of output: {}".format(output.shape))
-    out_img = np.reshape(output, (38,38))
-    print("Saving satImage_%d" % (i+1) + ".png")
-    scipy.misc.imsave(output_dir + ("satImage_%d" % (i+1)) + ".png", resize(out_img, (608,608), order=0, preserve_range=True))
+    d = np.stack(dd).reshape([-1,11*11])
+    import scipy
+    output_dir = '../results/SVM/'
+    output_images = []
+    num_preds_per_image = 1444 # 38**2
+    for i in range(2):
+        img = d[i*num_preds_per_image:(i+1)*num_preds_per_image, :]
+        output = clf.predict(img)
+        print("shape of output: {}".format(output.shape))
+        out_img = np.reshape(output, (38,38))
+        print("Saving satImage_%d" % (i+1) + ".png")
+        scipy.misc.imsave(output_dir + ("satImage_%d" % (i+1)) + ".png", resize(out_img, (608,608), order=0, preserve_range=True))

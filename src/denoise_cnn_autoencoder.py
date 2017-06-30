@@ -15,7 +15,7 @@ import scipy
 import scipy.misc
 import matplotlib.image as mpimg
 from skimage.transform import resize
-from sklearn.feature_extraction import image
+from sklearn.feature_extraction.image import extract_patches
 
 from cnn_autoencoder.model import cnn_ae, cnn_ae_ethan
 from cnn_autoencoder.cnn_ae_config import Config as conf
@@ -47,33 +47,20 @@ def corrupt(data, nu, type='salt_and_pepper'):
 def extract_patches(filename_base, num_images, patch_size=conf.patch_size, phase='train'):
     patches = []
     for i in range(1, num_images+1):
-        if phase == 'train':
-            imageid = "satImage_%.3d" % i
-            image_filename = filename_base + imageid + ".png"
-            if os.path.isfile(image_filename):
-                img = mpimg.imread(image_filename)
-                img = resize(img, (50,50))
-                patches.append(image.extract_patches(img, (patch_size, patch_size), extraction_step=1))
-                rot90img = rotate(img, 90, reshape=False, mode='reflect', order=3)
-                patches.append(image.extract_patches(rot90img, (patch_size, patch_size), extraction_step=1))
-                rot45img = rotate(img, 45, reshape=False, mode='reflect', order=3)
-                patches.append(image.extract_patches(rot45img, (patch_size, patch_size), extraction_step=1))
-                rot135img = rotate(img, 135, reshape=False, mode='reflect', order=3)
-                patches.append(image.extract_patches(rot135img, (patch_size, patch_size), extraction_step=1))
         elif phase == 'test':
             imageid = "raw_test_%d_pixels" % i
             image_filename = filename_base + imageid + ".png"
             if os.path.isfile(image_filename):
                 img = mpimg.imread(image_filename)
                 img = resize(img, (38,38))
-                patches.append(image.extract_patches(img, (patch_size, patch_size), extraction_step=1))
+                patches.append(extract_patches(img, (patch_size, patch_size), extraction_step=1))
         elif phase == 'train_cnn_output':
             imageid = "raw_satImage_%.3d_pixels" % i
             image_filename = filename_base + imageid + ".png"
             if os.path.isfile(image_filename):
                 img = mpimg.imread(image_filename)
                 img = resize(img, (50,50))
-                patches.append(image.extract_patches(img, (patch_size, patch_size), extraction_step=1))
+                patches.append(extract_patches(img, (patch_size, patch_size), extraction_step=1))
         else:
             raise ValueError('incorrect phase')
     return patches
@@ -173,19 +160,27 @@ def mainFunc(argv):
         configProto = tf.ConfigProto()
 
     print("loading ground truth data")
-    train_data_filename = "../data/training/groundtruth/"
-    targets = extract_patches(train_data_filename, conf.train_size, conf.patch_size, 'train')
-    targets = np.stack(targets).reshape(-1, conf.patch_size, conf.patch_size) # (20000, 16, 16)
-    targets = targets.reshape(len(targets), -1) # (122500, 256) for no rot (145800, 576) for rot and patch size 24
-    print("Shape of targets: {}".format(targets.shape))
-    patches_per_image_train = ( (conf.train_image_size//conf.gt_res) - conf.patch_size + 1)**2 ## conf.train_image_size//conf.gt_res = 50 res of gt is 8x8
-    print("Patches per train image: {}".format(patches_per_image_train)) # 729 for patch size 24
-    validation = np.copy(targets[:conf.val_size*patches_per_image_train,:]) # number of validation patches is 500
-    targets = np.copy(targets[patches_per_image_train*conf.val_size:,:])
+    train_data_directory = "../data/training/groundtruth/"
 
+    img_indices = np.arange(conf.train_size)
+    validation_img_indices = np.random.choice(conf.train_size, size=conf.val_size, replace=False)
+    validation_img_mask = np.zeros(conf.train_size, dtype=bool)
+    validation_img_mask[validation_img_indices] = True
+    train_img_mask = np.invert(validation_img_mask)
+    train_img_indices = img_indices[train_img_mask]
+
+    uncorrupted_train_data = create_uncorrupted_data(train_data_directory, train_img_indices, conf.patch_size)
+    uncorrupted_validation_data = create_uncorrupted_data(train_data_directory, validation_img_indices, conf.patch_size)
+
+    print("Shape of training data: {}".format(uncorrupted_train_data.shape))
+    patches_per_image_train = uncorrupted_train_data.shape[2] * uncorrupted_train_data.shape[3]
+    print("Patches per train image: {}".format(patches_per_image_train)) # 729 for patch size 24
+
+    uncorrupted_train_data = uncorrupted_train_data.reshape((-1, conf.patch_size, conf.patch_size))
+    uncorrupted_validation_data = uncorrupted_validation_data.reshape((-1, conf.patch_size, conf.patch_size))
     print("Adding noise to training data")
-    train = corrupt(targets, conf.corruption)
-    validation = corrupt(validation, conf.corruption)
+    corrupted_train_data = corrupt(uncorrupted_train_data, conf.corruption)
+    corrupted_validation_data = corrupt(uncorrupted_validation_data, conf.corruption)
 
     print("Initializing CNN denoising autoencoder")
     # model = cnn_ae(conf.patch_size**2, ## dim of the inputs
@@ -366,6 +361,53 @@ def mainFunc(argv):
             plt.savefig('./cnn_autoencoder_prediction_{}.png'.format(tag))
 
             print("Finished saving cnn autoencoder test set to disk")
+
+def create_uncorrupted_data(train_data_directory, image_indices, patch_size):
+    """
+    Loads the uncorrupted training (or validation) data (i.e. the groundtruth) from disk, rotates the images
+    and divides them into patches with stride 1.
+
+    :param train_data_directory: The directory path where the groundtruth files are located
+    :param image_indices: The indices of the training images to load
+    :param patch_size: The desired patch sizes
+    :return: A tensor of patches with dimensions
+        (image_indices.size * (number of resizes + 1), vertical patch count, horizontal patch count, patch_size, patch_size)
+
+    """
+    all_image_patches = []
+    for i in image_indices:
+        imageid = "satImage_%.3d" % i
+        image_filename = train_data_directory + imageid + ".png"
+
+        if os.path.isfile(image_filename):
+            original_img = mpimg.imread(image_filename)
+
+            resized_img = resize(original_img, (50,50))
+            rotated_images = add_rotations(resized_img)
+
+            rotated_img_patches = [extract_patches(rotimg, (patch_size, patch_size), extraction_step=1)for rotimg in rotated_images]
+
+            all_image_patches += rotated_img_patches
+
+    stacked_image_patches = np.stack(all_image_patches)
+    return stacked_image_patches
+
+
+def add_rotations(image):
+    """
+    Rotates the provided image a couple of time to generate more training data.
+    This should make the autoencoder more robust to diagonal roads for example.
+
+    The rotations will keep the dimensions of the image intact.
+
+    :param image: The image to rotate
+    :return: A list of rotated images, including the original image
+    """
+    rot90img = rotate(image, 90, reshape=False, mode='reflect', order=3)
+    rot45img = rotate(image, 45, reshape=False, mode='reflect', order=3)
+    rot135img = rotate(image, 135, reshape=False, mode='reflect', order=3)
+
+    return [image, rot90img, rot45img, rot135img]
 
 if __name__ == "__main__":
     #logging.basicConfig(filename='autoencoder.log', level=logging.DEBUG)

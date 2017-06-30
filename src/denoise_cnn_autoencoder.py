@@ -103,6 +103,28 @@ def reconstruction(img_data, size):
             idx += 1
     return np.divide(reconstruction, n)
 
+def _reconstruction(img_data, size):
+    """
+    Reconstruct single image from flattened array, function replaces values, so good for visualising the corruption process
+    Args:
+        img_data: flattened image array
+        type: size of the image (rescaled)
+    Returns:
+        recontructed image
+    """
+    patches_per_dim = size - conf.patch_size + 1
+
+    print("size: {}".format(size))
+    print("patches_per_dim: {}".format(patches_per_dim))
+    print("img_data: {}".format(img_data.shape))
+    reconstruction = np.zeros((size,size))
+    idx = 0
+    for i in range(patches_per_dim):
+        for j in range(patches_per_dim):
+            reconstruction[i:(i+conf.patch_size),j:(j+conf.patch_size)] =  img_data[idx,:].reshape(conf.patch_size, conf.patch_size)
+            idx += 1
+    return reconstruction
+
 def binarize(image):
     """
     Binarizes an image with the threshold defined in the AE config
@@ -289,7 +311,7 @@ def mainFunc(argv):
                 feed_dict = model.make_inputs_predict(inputs)
                 encode_decode = sess.run(model.y_pred, feed_dict=feed_dict) ## predictions from model are [batch_size, dim, dim, n_channels] i.e. (3125, 16, 16, 1)
                 print("shape of predictions: {}".format(encode_decode.shape)) # (100, 16, 16, 1)
-                val = reconstruction(inputs, 50)
+                val = _reconstruction(inputs, 50)
                 pred = reconstruction(encode_decode[:,:,:,0].reshape(-1, conf.patch_size**2), 50) ## train images rescaled to 50 by 50 granularity
                 a[0][i].imshow(val, cmap='gray', interpolation='none')
                 a[1][i].imshow(pred, cmap='gray', interpolation='none')

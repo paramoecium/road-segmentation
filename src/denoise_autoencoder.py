@@ -73,7 +73,7 @@ def extract_patches(filename_base, num_images, patch_size=conf.patch_size, phase
             image_filename = filename_base + imageid + ".png"
             if os.path.isfile(image_filename):
                 img = mpimg.imread(image_filename)
-                img = resize(img, (38,38))
+                img = resize(img, (50,50))
                 patches.append(image.extract_patches(img, (patch_size, patch_size), extraction_step=1))
         else:
             raise ValueError('incorrect phase')
@@ -244,12 +244,10 @@ def mainFunc(argv):
                 raise ValueError('no CNN train data to run Denoising Autoencoder on')
 
             print("Loading train set")
-            patches_per_image_test = ( (conf.test_image_size // conf.cnn_res) - conf.patch_size + 1)**2
-            print("patches per test image: {}".format(patches_per_image_test))
             train_full = extract_patches(prediction_train_dir, conf.train_size, conf.patch_size, 'train_cnn_output')
             train_full = np.stack(train_full).reshape(-1, conf.patch_size, conf.patch_size)
             train_full = train_full.reshape(len(train_full), -1)
-            print("Shape of test: {}".format(train_full.shape))
+            print("Shape of train: {}".format(train_full.shape))
 
             predictions = []
             runs = train_full.shape[0] // conf.batch_size
@@ -265,10 +263,10 @@ def mainFunc(argv):
                 prediction = sess.run(model.y_pred, feed_dict)
                 predictions.append(prediction)
 
-            print("individual prediction shape: {}".format(predictions[0].shape))
+            print("individual prediction shape: {}".format(predictions[0].shape)) # (32, 576)
             predictions = np.concatenate(predictions, axis=0).reshape(train_full.shape[0], conf.patch_size**2)
             #predictions = predictions.reshape(len(predictions), -1)
-            print("Shape of predictions: {}".format(predictions.shape)) # (116375, 256)
+            print("Shape of predictions: {}".format(predictions.shape)) # (22500, 576)
 
             # Save outputs to disk
             for i in range(conf.train_size):

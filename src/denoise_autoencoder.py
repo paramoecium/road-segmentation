@@ -61,13 +61,22 @@ def extract_patches(filename_base, num_images, patch_size=conf.patch_size, phase
                 img = resize(img, (50,50))
                 patches.append(image.extract_patches(img, (patch_size, patch_size), extraction_step=1))
                 patches.append(image.extract_patches(np.rot90(img), (patch_size, patch_size), extraction_step=1))
-        if phase == 'test':
+        elif phase == 'test':
             imageid = "raw_test_%d_pixels" % i
             image_filename = filename_base + imageid + ".png"
             if os.path.isfile(image_filename):
                 img = mpimg.imread(image_filename)
                 img = resize(img, (38,38))
                 patches.append(image.extract_patches(img, (patch_size, patch_size), extraction_step=1))
+        elif phase == 'train_cnn_output':
+            imageid = "raw_satImage_%.3d_pixels" % i
+            image_filename = filename_base + imageid + ".png"
+            if os.path.isfile(image_filename):
+                img = mpimg.imread(image_filename)
+                img = resize(img, (38,38))
+                patches.append(image.extract_patches(img, (patch_size, patch_size), extraction_step=1))
+        else:
+            raise ValueError('incorrect phase')
     return patches
 
 def reconstruction(img_data, size):
@@ -237,7 +246,7 @@ def mainFunc(argv):
             print("Loading train set")
             patches_per_image_test = ( (conf.test_image_size // conf.cnn_res) - conf.patch_size + 1)**2
             print("patches per test image: {}".format(patches_per_image_test))
-            train_full = extract_patches(prediction_train_dir, conf.train_size, conf.patch_size, 'train')
+            train_full = extract_patches(prediction_train_dir, conf.train_size, conf.patch_size, 'train_cnn_output')
             train_full = np.stack(train_full).reshape(-1, conf.patch_size, conf.patch_size)
             train_full = test.reshape(len(train_full), -1)
             print("Shape of test: {}".format(train_full.shape))

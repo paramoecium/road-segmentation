@@ -150,14 +150,15 @@ class cnn_ae_ethan():
                                 name='encoder_inputs',
                                 )
 
-        self.x_origin = tf.reshape(self.x, [-1, self.w, self.w, 1])
-
+        x_tensor = tf.reshape(self.x, [-1, self.w, self.w, 1])
+        self.x_origin = x_tensor
         self.x_noise = tf.placeholder(shape=(None, self.w**2),
                                       dtype=tf.float32,
                                       name='targets',
                                       )
 
-        self.x_origin_noise = tf.reshape(self.x_noise, [-1, self.w, self.w, 1])
+        x_noise_tensor = tf.reshape(self.x_noise, [-1, self.w, self.w, 1])
+        self.x_origin_noise = x_noise_tensor
 
     def weight_variable(self, shape, name):
         '''Helper function to create a weight variable initialized with

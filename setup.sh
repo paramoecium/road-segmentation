@@ -17,13 +17,15 @@ mkdir -p results/CNN_Output/training/high_res_raw
 mkdir -p results/CNN_Output_Baseline/test/raw
 mkdir -p results/CNN_Output_Baseline/training/raw
 
-mkdir -p results/Autoencoder_Output/raw
-mkdir -p results/Autoencoder_Output/high_res_raw
+mkdir -p results/Autoencoder_Output/test
+mkdir -p results/Autoencoder_Output/train
 mkdir -p logs/Autoencoder
 
 mkdir -p results/CNN_Autoencoder_Output/test
 mkdir -p results/CNN_Autoencoder_Output/train
 mkdir -p logs/CNN_Autoencoder
+
+mkdir -p results/SVM/
 
 # Create tmp directories to hold TensorFlow results
 mkdir -p tmp

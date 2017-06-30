@@ -230,7 +230,7 @@ def mainFunc(argv):
 
         if conf.run_on_train_set:
             print("Running Denoising Autoencoder on training images for upstream classification")
-            prediction_train_dir = "../results/CNN_Output/train/high_res_raw/"
+            prediction_train_dir = "../results/CNN_Output/training/high_res_raw/"
             if not os.path.isdir(prediction_train_dir):
                 raise ValueError('no CNN train data to run Denoising Autoencoder on')
 

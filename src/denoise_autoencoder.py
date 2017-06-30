@@ -248,7 +248,7 @@ def mainFunc(argv):
             print("patches per test image: {}".format(patches_per_image_test))
             train_full = extract_patches(prediction_train_dir, conf.train_size, conf.patch_size, 'train_cnn_output')
             train_full = np.stack(train_full).reshape(-1, conf.patch_size, conf.patch_size)
-            train_full = test.reshape(len(train_full), -1)
+            train_full = train_full.reshape(len(train_full), -1)
             print("Shape of test: {}".format(train_full.shape))
 
             predictions = []

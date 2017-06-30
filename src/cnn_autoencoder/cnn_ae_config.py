@@ -2,7 +2,7 @@ class Config():
     num_epochs = 1
     validation_summary_frequency = 1000
     checkpoint_frequency = 1000
-    batch_size = 32
+    batch_size = 10
     log_directory = '../logs/CNN_Autoencoder/'
     examples_to_show = 5
     val_size = 5
@@ -12,13 +12,13 @@ class Config():
     gt_res = 8
     train_image_resize = train_image_size // gt_res # 50
     test_image_resize = test_image_size // gt_res # 76
-    train_size = 100 # train data set size
-    test_size = 50 # test data set size
+    train_size = 2 # train data set size
+    test_size = 2 # test data set size
     patch_size = 24
     dropout_train = 1.0
     learning_rate = 0.005
     corruption = 0.075
     binarize_threshold = 0.1 # The grey level threshold for binarization of the auto encoder result
-    visualise_validation = True
-    run_on_test_set = True
-    run_on_train_set = True
+    visualise_validation = False
+    run_on_test_set = False
+    run_on_train_set = False

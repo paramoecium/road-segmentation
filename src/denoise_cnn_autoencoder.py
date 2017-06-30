@@ -17,7 +17,7 @@ import matplotlib.image as mpimg
 from skimage.transform import resize
 from sklearn.feature_extraction import image
 
-from cnn_autoencoder.model import cnn_ae, cnn_ae_ethan
+from cnn_autoencoder.model import cnn_ae
 from cnn_autoencoder.cnn_ae_config import Config as conf
 from scipy.ndimage.interpolation import rotate
 
@@ -188,12 +188,9 @@ def mainFunc(argv):
     validation = corrupt(validation, conf.corruption)
 
     print("Initializing CNN denoising autoencoder")
-    # model = cnn_ae(conf.patch_size**2, ## dim of the inputs
-    #                n_filters=[1, 16, 32, 64],
-    #                filter_sizes=[7, 5, 3, 3],
-    #                learning_rate=conf.learning_rate)
-    model = cnn_ae_ethan(conf.patch_size, ## dim of the inputs Not patch_size**2
-                         learning_rate=conf.learning_rate)
+    model = cnn_ae(conf.patch_size, ## dim of the inputs Not patch_size**2
+                         learning_rate=conf.learning_rate,
+                         skip_connection=True)
 
     print("Starting TensorFlow session")
     with tf.Session(config=configProto) as sess:
@@ -230,7 +227,9 @@ def mainFunc(argv):
                 batch_targets = targets[batch_indices,:]
                 feed_dict = model.make_inputs(batch_inputs, batch_targets)
 
-                _, train_summary = sess.run([model.optimizer, model.summary_op], feed_dict)
+                _, train_summary = sess.run([model.optimizer,
+                                             model.summary_op], feed_dict)
+
                 train_writer.add_summary(train_summary, global_step)
 
                 global_step += 1

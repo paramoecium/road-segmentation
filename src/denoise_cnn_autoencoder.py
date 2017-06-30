@@ -20,6 +20,7 @@ from sklearn.feature_extraction import image
 
 from cnn_autoencoder.model import cnn_ae, cnn_ae_ethan
 from cnn_autoencoder.cnn_ae_config import Config as conf
+from scipy.ndimage.interpolation import rotate
 
 tf.set_random_seed(123)
 np.random.seed(123)
@@ -54,7 +55,12 @@ def extract_patches(filename_base, num_images, patch_size=conf.patch_size, phase
                 img = mpimg.imread(image_filename)
                 img = resize(img, (50,50))
                 patches.append(image.extract_patches(img, (patch_size, patch_size), extraction_step=1))
-                patches.append(image.extract_patches(np.rot90(img), (patch_size, patch_size), extraction_step=1))
+                rot90img = rotate(img, 90, reshape=False, mode='reflect', order=3)
+                patches.append(image.extract_patches(rot90img, (patch_size, patch_size), extraction_step=1))
+                rot45img = rotate(img, 45, reshape=False, mode='reflect', order=3)
+                patches.append(image.extract_patches(rot45img, (patch_size, patch_size), extraction_step=1))
+                rot135img = rotate(img, 135, reshape=False, mode='reflect', order=3)
+                patches.append(image.extract_patches(rot135img, (patch_size, patch_size), extraction_step=1))
         if phase == 'test':
             imageid = "raw_test_%d_pixels" % i
             image_filename = filename_base + imageid + ".png"
@@ -88,6 +94,18 @@ def reconstruction(img_data, size):
             n[i:(i+conf.patch_size),j:(j+conf.patch_size)] += 1
             idx += 1
     return np.divide(reconstruction, n)
+
+def binarize(image):
+    """
+    Binarizes an image with the threshold defined in the AE config
+    :param image: The image to binarize. Most likely a low-res image where each pixel
+                  represents a patch
+    :return: An image where each pixel larger than the threshold is set to 1,
+             and otherwise set to 0.
+    """
+    binarized = np.zeros(image.shape)
+    binarized[image > conf.binarize_threshold] = 1
+    return binarized
 
 def resize_img(img, opt):
     """
@@ -150,11 +168,11 @@ def mainFunc(argv):
     train_data_filename = "../data/training/groundtruth/"
     targets = extract_patches(train_data_filename, conf.train_size, conf.patch_size, 'train')
     targets = np.stack(targets).reshape(-1, conf.patch_size, conf.patch_size) # (20000, 16, 16)
-    targets = targets.reshape(len(targets), -1) # (122500, 256) for no rot
+    targets = targets.reshape(len(targets), -1) # (122500, 256) for no rot (145800, 576) for rot and patch size 24
     train_full = np.copy(targets)
     print("Shape of targets: {}".format(targets.shape))
     patches_per_image_train = ( (conf.train_image_size//conf.gt_res) - conf.patch_size + 1)**2 ## conf.train_image_size//conf.gt_res = 50 res of gt is 8x8
-    print("Patches per train image: {}".format(patches_per_image_train))
+    print("Patches per train image: {}".format(patches_per_image_train)) # 729 for patch size 24
     validation = np.copy(targets[:conf.val_size*patches_per_image_train,:]) # number of validation patches is 500
     targets = np.copy(targets[patches_per_image_train*conf.val_size:,:])
 
@@ -306,12 +324,19 @@ def mainFunc(argv):
                 print("Test img: " + str(i+1))
                 img_name = "cnn_ae_test_" + str(i+1)
                 output_path = "../results/CNN_Autoencoder_Output/test/"
-                if not os.path.isdir(output_path):
-                    raise ValueError('no CNN data to run Convolutional Denoising Autoencoder on')
+                binarize_output_path = os.path.join(output_path, "binarized/")
+                if not os.path.exists(output_path):
+                    os.makedirs(output_path)
+                if not os.path.exists(binarize_output_path):
+                    os.makedirs(binarize_output_path)
                 prediction = reconstruction(predictions[i*patches_per_image_test:(i+1)*patches_per_image_test,:], 38) # 38 is the resized test set dim as resolution is 16x16
+                binarized_prediction = binarize(prediction)
                 # resizing test images to 608x608 and saving to disk
-                scipy.misc.imsave(output_path + img_name + ".png", resize_img(prediction, 'test'))
+                resized_greylevel_output_images = resize_img(prediction, 'test')
+                scipy.misc.imsave(output_path + img_name + ".png", resized_greylevel_output_images)
 
+                resized_binarized_output_images = resize_img(binarized_prediction, 'test')
+                scipy.misc.imsave(binarize_output_path + img_name + ".png", resized_binarized_output_images)
             f, a = plt.subplots(2, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
             for i in range(conf.examples_to_show):
                 t = reconstruction(test[i*patches_per_image_test:(i+1)*patches_per_image_test,:], (conf.test_image_size // conf.cnn_res)) # (conf.test_image_size // conf.cnn_res) = 38

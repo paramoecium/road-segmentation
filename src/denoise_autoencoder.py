@@ -207,8 +207,8 @@ def mainFunc(argv):
     model = ae(n_input=int(conf.patch_size*conf.patch_size),
                n_hidden_1=int(conf.patch_size*conf.patch_size/conf.ae_step),
                n_hidden_2=int(conf.patch_size*conf.patch_size/conf.ae_step/conf.ae_step),
-               stack_1=True,
-               stack_2=True,
+               stack_1=conf.stack_1,
+               stack_2=conf.stack_2,
                learning_rate=conf.learning_rate,
                dropout=conf.dropout_train,
                skip_arch=False)

@@ -20,3 +20,5 @@ class Config():
     visualise_validation = True
     run_on_test_set = True
     run_on_train_set = True
+    stack_1 = False
+    stack_2 = False

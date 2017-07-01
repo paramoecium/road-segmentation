@@ -247,10 +247,10 @@ def mainFunc(argv):
     uncorrupted_train_data = uncorrupted_train_data.reshape((-1, conf.patch_size, conf.patch_size))
     uncorrupted_validation_data = uncorrupted_validation_data.reshape((-1, conf.patch_size, conf.patch_size))
     print("Adding noise to training data")
-    corrupted_train_data = corrupt(uncorrupted_train_data, conf.corruption, 'random_neighbourhood')
-    corrupted_validation_data = corrupt(uncorrupted_validation_data, conf.corruption, 'random_neighbourhood')
+    #corrupted_train_data = corrupt(uncorrupted_train_data, conf.corruption, 'random_neighbourhood')
+    #corrupted_validation_data = corrupt(uncorrupted_validation_data, conf.corruption, 'random_neighbourhood')
 
-    train = corrupted_train_data
+    train = uncorrupted_train_data
     targets = uncorrupted_train_data
     print("Initializing CNN denoising autoencoder")
     # model = cnn_ae(conf.patch_size**2, ## dim of the inputs
@@ -292,7 +292,7 @@ def mainFunc(argv):
                 offset = (batch_index*conf.batch_size) % (n - conf.batch_size)
                 batch_indices = perm_idx[offset:(offset + conf.batch_size)]
 
-                batch_inputs = train[batch_indices,:]
+                batch_inputs = corrupt(train[batch_indices,:], conf.corruption, 'random_neighbourhood')
                 batch_targets = targets[batch_indices,:]
                 feed_dict = model.make_inputs(batch_inputs, batch_targets)
 

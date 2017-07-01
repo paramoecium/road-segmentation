@@ -19,12 +19,10 @@ from skimage.transform import resize
 import matplotlib.image as mpimg
 from skimage.transform import resize
 from sklearn.feature_extraction import image
+from scipy.ndimage.interpolation import rotate
 
 from autoencoder.model import ae
 from autoencoder.ae_config import Config as conf
-
-import patch_extraction_module as pem
-import data_loading_module as dlm
 
 
 tf.set_random_seed(123)

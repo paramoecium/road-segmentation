@@ -69,7 +69,7 @@ def extract_patches(filename_base, num_images, patch_size=conf.patch_size, phase
             image_filename = filename_base + imageid + ".png"
             if os.path.isfile(image_filename):
                 img = mpimg.imread(image_filename)
-                img = resize(img, (38,38))
+                img = resize(img, (50,50))
                 patches.append(image.extract_patches(img, (patch_size, patch_size), extraction_step=1))
         elif phase == 'train_cnn_output':
             imageid = "raw_satImage_%.3d_pixels" % i
@@ -332,8 +332,8 @@ def mainFunc(argv):
                 raise ValueError('no CNN data to run Convolutional Denoising Autoencoder on')
 
             print("Loading test set")
-            patches_per_image_test = ( 50 - conf.patch_size + 1)**2 ## 608 / 16 = 38, where 16 is the resolution of the CNN output
-            print("patches per test image: {}".format(patches_per_image_test)) # 225
+            patches_per_image_test = ( 50 - conf.patch_size + 1)**2 ## test set images are
+            print("patches per test image: {}".format(patches_per_image_test)) # 729
             test = extract_patches(prediction_test_dir, conf.test_size, conf.patch_size, 'test')
             test = np.stack(test).reshape(-1, conf.patch_size, conf.patch_size)
             test = test.reshape(len(test), -1)

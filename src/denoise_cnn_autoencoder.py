@@ -241,7 +241,7 @@ def mainFunc(argv):
     uncorrupted_validation_data = create_uncorrupted_data(train_data_directory, validation_img_indices, conf.patch_size)
 
     print("Shape of training data: {}".format(uncorrupted_train_data.shape))
-    patches_per_image_train = uncorrupted_train_data.shape[2] * uncorrupted_train_data.shape[3]
+    patches_per_image_train = uncorrupted_train_data.shape[1] * uncorrupted_train_data.shape[2]
     print("Patches per train image: {}".format(patches_per_image_train)) # 729 for patch size 24
 
     uncorrupted_train_data = uncorrupted_train_data.reshape((-1, conf.patch_size, conf.patch_size))

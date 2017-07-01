@@ -137,20 +137,19 @@ def resize_img(img, opt):
     """
     #print(img.shape)
     if opt == 'test':
-        size = conf.test_image_size
-        blocks = conf.cnn_res # resolution of cnn output of 16x16 pixels are the same class
-        steps = conf.test_image_size // blocks # 38
+        img = resize(img, (conf.test_image_size, conf.test_image_size))
+        return img
     elif opt == 'train':
         size = conf.train_image_size
-        blocks = conf.gt_res # resolution of the gt is 8x8 pixels for one class
-        steps = conf.train_image_size // blocks # 50
+        blocks = 8 #conf.gt_res # resolution of the gt is 8x8 pixels for one class
+        steps = 50 #conf.train_image_size // blocks # 50
+        dd = np.zeros((size, size))
+        for i in range(steps):
+            for j in range(steps):
+                dd[j*blocks:(j+1)*blocks,i*blocks:(i+1)*blocks] = img[j,i]
+        return dd
     else:
         raise ValueError('test or train plz')
-    dd = np.zeros((size, size))
-    for i in range(steps):
-        for j in range(steps):
-            dd[j*blocks:(j+1)*blocks,i*blocks:(i+1)*blocks] = img[j,i]
-    return dd
 
 
 def mainFunc(argv):
@@ -369,7 +368,7 @@ def mainFunc(argv):
 
             f, a = plt.subplots(2, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
             for i in range(conf.examples_to_show):
-                t = reconstruction(test[i*patches_per_image_test:(i+1)*patches_per_image_test,:], (conf.test_image_size // conf.cnn_res)) # (conf.test_image_size // conf.cnn_res) = 38
+                t = reconstruction(test[i*patches_per_image_test:(i+1)*patches_per_image_test,:], 50)
                 pred = reconstruction(predictions[i*patches_per_image_test:(i+1)*patches_per_image_test,:], 38)
                 a[0][i].imshow(t, cmap='gray', interpolation='none')
                 a[1][i].imshow(pred, cmap='gray', interpolation='none')

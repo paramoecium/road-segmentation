@@ -16,6 +16,7 @@ import scipy.misc
 import matplotlib.image as mpimg
 from skimage.transform import resize
 from sklearn.feature_extraction import image
+from sklearn.metrics import f1_score
 
 from cnn_autoencoder.model import cnn_ae
 from cnn_autoencoder.cnn_ae_config import Config as conf
@@ -207,12 +208,12 @@ def mainFunc(argv):
 
     print("Adding noise to training data")
     train = corrupt(targets, conf.corruption)
-    validation = corrupt(validation, conf.corruption)
+    validation_corrupted = corrupt(validation, conf.corruption)
 
     print("Initializing CNN denoising autoencoder")
     model = cnn_ae(conf.patch_size, ## dim of the inputs Not patch_size**2
-                         learning_rate=conf.learning_rate,
-                         skip_connection=True)
+                   learning_rate=conf.learning_rate,
+                   skip_connection=True)
 
     print("Starting TensorFlow session")
     with tf.Session(config=configProto) as sess:
@@ -307,7 +308,7 @@ def mainFunc(argv):
             print("Visualising encoder results and true images from train set")
             f, a = plt.subplots(2, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
             for i in range(conf.examples_to_show):
-                inputs = validation[i*patches_per_image_train:(i+1)*patches_per_image_train,:]
+                inputs = validation_corrupted[i*patches_per_image_train:(i+1)*patches_per_image_train,:]
                 feed_dict = model.make_inputs_predict(inputs)
                 encode_decode = sess.run(model.y_pred, feed_dict=feed_dict) ## predictions from model are [batch_size, dim, dim, n_channels] i.e. (3125, 16, 16, 1)
                 print("shape of predictions: {}".format(encode_decode.shape)) # (100, 16, 16, 1)
@@ -321,6 +322,23 @@ def mainFunc(argv):
                 a[1][i].get_yaxis().set_visible(False)
             plt.gray()
             plt.savefig('./cnn_autoencoder_eval_{}.png'.format(tag))
+
+        # Calculating f1-score
+        if conf.f1_score:
+            predictions = []
+            for i in range(conf.val_size):
+                inputs = validation_corrupted[i*patches_per_image_train:(i+1)*patches_per_image_train,:]
+                feed_dict = model.make_inputs_predict(inputs)
+                prediction = sess.run(model.y_pred, feed_dict) ## numpy array (50, 76, 76, 1)
+                predictions.append(prediction)
+
+            print("individual prediction shape: {}".format(predictions[0].shape))
+            predictions = np.concatenate(predictions, axis=0).reshape(validation_corrupted.shape[0], conf.patch_size**2)
+            print("Shape of predictions: {}".format(predictions.shape))
+            val_bin = binarize(validation_corrupted)
+            pred_bin = binarize(predictions)
+            f1s = f1_score(val_bin.reshape([-1]), pred_bin.reshape([-1]))
+            print("f1 score: {}".format(f1s))
 
         if conf.run_on_test_set:
             print("Running the Convolutional Denoising Autoencoder on the predictions")

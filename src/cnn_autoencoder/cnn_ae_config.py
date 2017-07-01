@@ -22,3 +22,4 @@ class Config():
     visualise_validation = False
     run_on_test_set = False
     run_on_train_set = False
+    f1_score = True

@@ -112,7 +112,7 @@ def corrupt(data, nu, type='salt_and_pepper'):
                         randomly_flip_8_neighbourhood(tmp[idxpatch,...], i, j, minval, maxval, neighbour_flip_prob)
     return tmp
 
-def extract_patches(filename_base, num_images, patch_size=conf.patch_size, phase='train'):
+def load_images_to_predict(filename_base, num_images, patch_size=conf.patch_size, phase='test'):
     patches = []
     for i in range(1, num_images+1):
         if phase == 'test':
@@ -127,13 +127,14 @@ def extract_patches(filename_base, num_images, patch_size=conf.patch_size, phase
             image_filename = filename_base + imageid + ".png"
             if os.path.isfile(image_filename):
                 img = mpimg.imread(image_filename)
-                img = resize(img, (50,50))
+                img = resize(img, (conf.train_image_resize,conf.train_image_resize))
                 patches.append(skimg.extract_patches(img, (patch_size, patch_size), extraction_step=1))
         else:
             raise ValueError('incorrect phase')
-    return patches
+    stacked_image_patches = np.stack(patches)
+    return stacked_image_patches
 
-def reconstruction(img_data, size):
+def reconstruction(img_data, patches_per_predict_image_dim, size):
     """
     Reconstruct single image from flattened array.
     IMPORTANT: overlapping patches are averaged, not replaced like in recontrustion()
@@ -143,7 +144,6 @@ def reconstruction(img_data, size):
     Returns:
         recontructed image
     """
-    patches_per_dim = size - conf.patch_size + 1
 
     # print("size: {}".format(size))
     # print("patches_per_dim: {}".format(patches_per_dim))
@@ -151,9 +151,9 @@ def reconstruction(img_data, size):
     reconstruction = np.zeros((size,size))
     n = np.zeros((size,size))
     idx = 0
-    for i in range(patches_per_dim):
-        for j in range(patches_per_dim):
-            reconstruction[i:(i+conf.patch_size),j:(j+conf.patch_size)] += img_data[idx,:].reshape(conf.patch_size, conf.patch_size)
+    for i in range(patches_per_predict_image_dim):
+        for j in range(patches_per_predict_image_dim):
+            reconstruction[i:(i+conf.patch_size),j:(j+conf.patch_size)] += img_data[idx,:,:,0]
             n[i:(i+conf.patch_size),j:(j+conf.patch_size)] += 1
             idx += 1
     return np.divide(reconstruction, n)
@@ -315,26 +315,26 @@ def mainFunc(argv):
                 raise ValueError('no CNN train data to run Denoising Autoencoder on')
 
             print("Loading train set")
-            train_full = extract_patches(prediction_train_dir, conf.train_size, conf.patch_size, 'train_cnn_output')
-            train_full = np.stack(train_full).reshape(-1, conf.patch_size, conf.patch_size)
-            train_full = train_full.reshape(len(train_full), -1)
-            print("Shape of train: {}".format(train_full.shape))
+            patches_to_predict = load_images_to_predict(prediction_train_dir, conf.train_size, conf.patch_size, 'train_cnn_output')
+            print("Shape of patches_to_predict: {}".format(patches_to_predict.shape))
+            patches_per_predict_image_dim = patches_to_predict.shape[1] # Assume square images
+            patches_to_predict = patches_to_predict.reshape((-1, conf.patch_size, conf.patch_size))
             predictions = []
-            runs = train_full.shape[0] // conf.batch_size
-            rem = train_full.shape[0] % conf.batch_size
-            for i in range(runs):
-                batch_inputs = train_full[i*conf.batch_size:((i+1)*conf.batch_size),:]
+            runs = patches_to_predict.shape[0] // conf.batch_size
+            rem = patches_to_predict.shape[0] % conf.batch_size
+            for i in tqdm(range(runs)):
+                batch_inputs = patches_to_predict[i*conf.batch_size:((i+1)*conf.batch_size),...]
                 feed_dict = model.make_inputs_predict(batch_inputs)
                 prediction = sess.run(model.y_pred, feed_dict)
                 predictions.append(prediction)
             if rem > 0:
-                batch_inputs = train_full[runs*conf.batch_size:(runs*conf.batch_size + rem),:]
+                batch_inputs = patches_to_predict[runs*conf.batch_size:(runs*conf.batch_size + rem),...]
                 feed_dict = model.make_inputs_predict(batch_inputs)
                 prediction = sess.run(model.y_pred, feed_dict)
                 predictions.append(prediction)
 
             print("individual prediction shape: {}".format(predictions[0].shape))
-            predictions = np.concatenate(predictions, axis=0).reshape(train_full.shape[0], conf.patch_size**2)
+            predictions = np.concatenate(predictions, axis=0)
             print("Shape of predictions: {}".format(predictions.shape))
 
             # Save outputs to disk
@@ -344,7 +344,7 @@ def mainFunc(argv):
                 output_path = "../results/CNN_Autoencoder_Output/train/"
                 if not os.path.isdir(output_path):
                     raise ValueError('no CNN data to run Convolutional Denoising Autoencoder on')
-                prediction = reconstruction(predictions[i*patches_per_image_train:(i+1)*patches_per_image_train,:], 50)
+                prediction = reconstruction(predictions[i*patches_per_predict_image_dim**2:(i+1)*patches_per_predict_image_dim**2,:], patches_per_predict_image_dim, conf.train_image_resize)
                 # resizing test images to 400x400 and saving to disk
                 scipy.misc.imsave(output_path + img_name + ".png", resize_img(prediction, 'train'))
 
@@ -376,7 +376,7 @@ def mainFunc(argv):
             print("Loading test set")
             patches_per_image_test = ( (conf.test_image_size // conf.cnn_res) - conf.patch_size + 1)**2 ## 608 / 16 = 38, where 16 is the resolution of the CNN output
             print("patches per test image: {}".format(patches_per_image_test))
-            test = extract_patches(prediction_test_dir, conf.test_size, conf.patch_size, 'test')
+            test = load_images_to_predict(prediction_test_dir, conf.test_size, conf.patch_size, 'test')
             test = np.stack(test).reshape(-1, conf.patch_size, conf.patch_size) # (n, 16, 16)
             test = test.reshape(len(test), -1) # (n, 256)
             print("Shape of test: {}".format(test.shape)) # Shape of test: (26450, 256)

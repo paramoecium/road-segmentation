@@ -17,7 +17,7 @@ class Config():
     patch_size = 24
     dropout_train = 1.0
     learning_rate = 0.005
-    corruption = 0.075
+    corruption = 0.1
     binarize_threshold = 0.1 # The grey level threshold for binarization of the auto encoder result
     visualise_validation = True
     run_on_test_set = True

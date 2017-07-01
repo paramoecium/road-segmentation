@@ -250,6 +250,8 @@ def mainFunc(argv):
     corrupted_train_data = corrupt(uncorrupted_train_data, conf.corruption, 'random_neighbourhood')
     corrupted_validation_data = corrupt(uncorrupted_validation_data, conf.corruption, 'random_neighbourhood')
 
+    train = corrupted_train_data
+    targets = uncorrupted_train_data
     print("Initializing CNN denoising autoencoder")
     # model = cnn_ae(conf.patch_size**2, ## dim of the inputs
     #                n_filters=[1, 16, 32, 64],
@@ -434,7 +436,7 @@ def mainFunc(argv):
 def create_uncorrupted_data(train_data_directory, image_indices, patch_size):
     """
     Loads the uncorrupted training (or validation) data (i.e. the groundtruth) from disk, rotates the images
-    and divides them into patches with stride 1.
+    and divides them into patches with a stride of half the patch_size
 
     :param train_data_directory: The directory path where the groundtruth files are located
     :param image_indices: The indices of the training images to load
@@ -451,10 +453,10 @@ def create_uncorrupted_data(train_data_directory, image_indices, patch_size):
         if os.path.isfile(image_filename):
             original_img = mpimg.imread(image_filename)
 
-            resized_img = resize(original_img, (50,50))
+            resized_img = resize(original_img, (conf.train_image_resize, conf.train_image_resize))
             rotated_images = add_rotations(resized_img)
 
-            rotated_img_patches = [skimg.extract_patches(rotimg, (patch_size, patch_size), extraction_step=1)for rotimg in rotated_images]
+            rotated_img_patches = [skimg.extract_patches(rotimg, (conf.patch_size, conf.patch_size), extraction_step=patch_size//2)for rotimg in rotated_images]
 
             all_image_patches += rotated_img_patches
 

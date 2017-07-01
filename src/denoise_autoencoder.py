@@ -66,7 +66,7 @@ def extract_patches(filename_base, num_images, patch_size=conf.patch_size, phase
             image_filename = filename_base + imageid + ".png"
             if os.path.isfile(image_filename):
                 img = mpimg.imread(image_filename)
-                img = resize(img, (38,38))
+                img = resize(img, (50,50))
                 patches.append(image.extract_patches(img, (patch_size, patch_size), extraction_step=1))
         elif phase == 'train_cnn_output':
             imageid = "raw_satImage_%.3d_pixels" % i
@@ -103,6 +103,28 @@ def reconstruction(img_data, size):
             n[i:(i+conf.patch_size),j:(j+conf.patch_size)] += 1
             idx += 1
     return np.divide(reconstruction, n)
+
+def _reconstruction(img_data, size):
+    """
+    Reconstruct single image from flattened array, function replaces values, so good for visualising the corruption process
+    Args:
+        img_data: flattened image array
+        type: size of the image (rescaled)
+    Returns:
+        recontructed image
+    """
+    patches_per_dim = size - conf.patch_size + 1
+
+    print("size: {}".format(size))
+    print("patches_per_dim: {}".format(patches_per_dim))
+    print("img_data: {}".format(img_data.shape))
+    reconstruction = np.zeros((size,size))
+    idx = 0
+    for i in range(patches_per_dim):
+        for j in range(patches_per_dim):
+            reconstruction[i:(i+conf.patch_size),j:(j+conf.patch_size)] =  img_data[idx,:].reshape(conf.patch_size, conf.patch_size)
+            idx += 1
+    return reconstruction
 
 def resize_img(img, opt):
     """
@@ -168,7 +190,7 @@ def mainFunc(argv):
     targets = np.stack(targets).reshape(-1, conf.patch_size, conf.patch_size) # (20000, 16, 16)
     targets = targets.reshape(len(targets), -1) # (122500, 256) for no rot (145800, 576) for rot and patch size 24
     print("Shape of targets: {}".format(targets.shape))
-    patches_per_image_train = ( (conf.train_image_size//conf.gt_res) - conf.patch_size + 1)**2 ## conf.train_image_size//conf.gt_res = 50 res of gt is 8x8
+    patches_per_image_train = ( 50 - conf.patch_size + 1)**2 ## conf.train_image_size//conf.gt_res = 50 res of gt is 8x8
     print("Patches per train image: {}".format(patches_per_image_train)) # 729 for patch size 24
     validation = np.copy(targets[:conf.val_size*patches_per_image_train,:]) # number of validation patches is 500
     targets = np.copy(targets[patches_per_image_train*conf.val_size:,:])
@@ -185,6 +207,8 @@ def mainFunc(argv):
     model = ae(n_input=int(conf.patch_size*conf.patch_size),
                n_hidden_1=int(conf.patch_size*conf.patch_size/conf.ae_step),
                n_hidden_2=int(conf.patch_size*conf.patch_size/conf.ae_step/conf.ae_step),
+               stack_1=True,
+               stack_2=True,
                learning_rate=conf.learning_rate,
                dropout=conf.dropout_train,
                skip_arch=False)
@@ -288,7 +312,7 @@ def mainFunc(argv):
                 feed_dict = model.make_inputs_predict(inputs)
                 encode_decode = sess.run(model.y_pred, feed_dict=feed_dict)
                 print("shape of predictions: {}".format(encode_decode.shape)) # (729, 576)
-                val = reconstruction(inputs, 50)
+                val = _reconstruction(inputs, 50)
                 pred = reconstruction(encode_decode, 50)
                 a[0][i].imshow(val, cmap='gray', interpolation='none')
                 a[1][i].imshow(pred, cmap='gray', interpolation='none')
@@ -306,7 +330,7 @@ def mainFunc(argv):
                 raise ValueError('no CNN data to run Convolutional Denoising Autoencoder on')
 
             print("Loading test set")
-            patches_per_image_test = ( (conf.test_image_size // conf.cnn_res) - conf.patch_size + 1)**2 ## 608 / 16 = 38, where 16 is the resolution of the CNN output
+            patches_per_image_test = ( 50 - conf.patch_size + 1)**2 ## 608 / 16 = 38, where 16 is the resolution of the CNN output
             print("patches per test image: {}".format(patches_per_image_test)) # 225
             test = extract_patches(prediction_test_dir, conf.test_size, conf.patch_size, 'test')
             test = np.stack(test).reshape(-1, conf.patch_size, conf.patch_size)

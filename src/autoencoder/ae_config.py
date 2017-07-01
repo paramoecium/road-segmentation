@@ -10,8 +10,8 @@ class Config():
     test_image_size = 608 # test images are of size 608 x 608
     cnn_res = 16
     gt_res = 8
-    train_size = 100 # train data set size
-    test_size = 50 # test data set size
+    train_size = 5 # train data set size
+    test_size = 5 # test data set size
     patch_size = 24
     dropout_train = 1.0
     learning_rate = 0.005

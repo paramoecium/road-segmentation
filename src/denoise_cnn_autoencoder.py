@@ -100,7 +100,7 @@ def corrupt(data, nu, type='salt_and_pepper'):
         flip_probabilities = np.random.random(size=(num_patches, flips_per_image, RANDOMIZATIONS_NEEDED))
 
         for idxpatch in range(num_patches):
-            print(idxpatch, num_patches)
+
             for idxcount, indices in enumerate(random_indices[idxpatch,...]):
                 i, j = indices
                 if flip_probabilities[idxpatch, idxcount, 0] < FLIP_BASE_CHANCE: # Apply flip only with base chance of 50 %

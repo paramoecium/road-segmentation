@@ -145,14 +145,14 @@ class cnn_ae_ethan():
         self._init_summary()
 
     def _init_placeholders(self):
-        self.x = tf.placeholder(shape=(None, self.w**2),
+        self.x = tf.placeholder(shape=(None, self.w, self.w),
                                 dtype=tf.float32,
                                 name='encoder_inputs',
                                 )
 
         x_tensor = tf.reshape(self.x, [-1, self.w, self.w, 1])
         self.x_origin = x_tensor
-        self.x_noise = tf.placeholder(shape=(None, self.w**2),
+        self.x_noise = tf.placeholder(shape=(None, self.w, self.w),
                                       dtype=tf.float32,
                                       name='targets',
                                       )

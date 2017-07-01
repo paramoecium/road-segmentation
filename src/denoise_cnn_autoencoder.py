@@ -120,7 +120,7 @@ def load_images_to_predict(filename_base, num_images, patch_size=conf.patch_size
             image_filename = filename_base + imageid + ".png"
             if os.path.isfile(image_filename):
                 img = mpimg.imread(image_filename)
-                img = resize(img, (38,38))
+                img = resize(img, (conf.test_image_resize,conf.test_image_resize))
                 patches.append(skimg.extract_patches(img, (patch_size, patch_size), extraction_step=1))
         elif phase == 'train_cnn_output':
             imageid = "raw_satImage_%.3d_pixels" % i
@@ -373,31 +373,27 @@ def mainFunc(argv):
             if not os.path.isdir(prediction_test_dir):
                 raise ValueError('no CNN data to run Convolutional Denoising Autoencoder on')
 
-            print("Loading test set")
-            patches_per_image_test = ( (conf.test_image_size // conf.cnn_res) - conf.patch_size + 1)**2 ## 608 / 16 = 38, where 16 is the resolution of the CNN output
-            print("patches per test image: {}".format(patches_per_image_test))
-            test = load_images_to_predict(prediction_test_dir, conf.test_size, conf.patch_size, 'test')
-            test = np.stack(test).reshape(-1, conf.patch_size, conf.patch_size) # (n, 16, 16)
-            test = test.reshape(len(test), -1) # (n, 256)
-            print("Shape of test: {}".format(test.shape)) # Shape of test: (26450, 256)
-
+            patches_to_predict = load_images_to_predict(prediction_test_dir, conf.train_size, conf.patch_size,
+                                                        'test')
+            print("Shape of patches_to_predict: {}".format(patches_to_predict.shape))
+            patches_per_predict_image_dim = patches_to_predict.shape[1]  # Assume square images
+            patches_to_predict = patches_to_predict.reshape((-1, conf.patch_size, conf.patch_size))
             predictions = []
-            runs = test.shape[0] // conf.batch_size
-            rem = test.shape[0] % conf.batch_size
-            for i in range(runs):
-                batch_inputs = test[i*conf.batch_size:((i+1)*conf.batch_size),:]
+            runs = patches_to_predict.shape[0] // conf.batch_size
+            rem = patches_to_predict.shape[0] % conf.batch_size
+            for i in tqdm(range(runs)):
+                batch_inputs = patches_to_predict[i*conf.batch_size:((i+1)*conf.batch_size),...]
                 feed_dict = model.make_inputs_predict(batch_inputs)
-                prediction = sess.run(model.y_pred, feed_dict) ## numpy array (50, 76, 76, 1)
+                prediction = sess.run(model.y_pred, feed_dict)
                 predictions.append(prediction)
             if rem > 0:
-                batch_inputs = test[runs*conf.batch_size:(runs*conf.batch_size + rem),:]
+                batch_inputs = patches_to_predict[runs*conf.batch_size:(runs*conf.batch_size + rem),...]
                 feed_dict = model.make_inputs_predict(batch_inputs)
                 prediction = sess.run(model.y_pred, feed_dict)
                 predictions.append(prediction)
 
             print("individual prediction shape: {}".format(predictions[0].shape))
-            predictions = np.concatenate(predictions, axis=0).reshape(test.shape[0], conf.patch_size**2)
-            #predictions = predictions.reshape(len(predictions), -1)
+            predictions = np.concatenate(predictions, axis=0)
             print("Shape of predictions: {}".format(predictions.shape))
 
             # Save outputs to disk
@@ -410,7 +406,9 @@ def mainFunc(argv):
                     os.makedirs(output_path)
                 if not os.path.exists(binarize_output_path):
                     os.makedirs(binarize_output_path)
-                prediction = reconstruction(predictions[i*patches_per_image_test:(i+1)*patches_per_image_test,:], 38) # 38 is the resized test set dim as resolution is 16x16
+                prediction = reconstruction(
+                    predictions[i * patches_per_predict_image_dim ** 2:(i + 1) * patches_per_predict_image_dim ** 2, :],
+                    patches_per_predict_image_dim, conf.test_image_resize)
                 binarized_prediction = binarize(prediction)
                 # resizing test images to 608x608 and saving to disk
                 resized_greylevel_output_images = resize_img(prediction, 'test')
@@ -456,7 +454,7 @@ def create_uncorrupted_data(train_data_directory, image_indices, patch_size):
             resized_img = resize(original_img, (conf.train_image_resize, conf.train_image_resize))
             rotated_images = add_rotations(resized_img)
 
-            rotated_img_patches = [skimg.extract_patches(rotimg, (conf.patch_size, conf.patch_size), extraction_step=patch_size//2)for rotimg in rotated_images]
+            rotated_img_patches = [skimg.extract_patches(rotimg, (conf.patch_size, conf.patch_size), extraction_step=1)for rotimg in rotated_images]
 
             all_image_patches += rotated_img_patches
 

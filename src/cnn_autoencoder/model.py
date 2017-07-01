@@ -194,7 +194,7 @@ class cnn_ae_ethan():
         b_e_conv1 = self.bias_variable([16], "b_e_conv1")
         h_e_conv1 = tf.nn.relu(tf.add(self.conv2d(self.x_origin_noise, W_e_conv1), b_e_conv1))
 
-        W_e_conv2 = self.weight_variable([5, 5, 16, 32], "w_e_conv2")
+        W_e_conv2 = self.weight_variable([3, 3, 16, 32], "w_e_conv2")
         b_e_conv2 = self.bias_variable([32], "b_e_conv2")
         h_e_conv2 = tf.nn.relu(tf.add(self.conv2d(h_e_conv1, W_e_conv2), b_e_conv2))
 

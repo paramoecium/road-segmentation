@@ -1,5 +1,5 @@
 class Config():
-    num_epochs = 1
+    num_epochs = 30
     validation_summary_frequency = 1000
     checkpoint_frequency = 1000
     batch_size = 32
@@ -9,7 +9,7 @@ class Config():
     train_image_size = 400 # train images are of size 400 x 400
     test_image_size = 608 # test images are of size 608 x 608
     cnn_res = 16 # pixels in CNN prediction
-    gt_res = 8
+    gt_res = 16
     train_image_resize = train_image_size // gt_res # 50
     test_image_resize = test_image_size // gt_res # 76
     train_size = 100 # train data set size
@@ -17,8 +17,8 @@ class Config():
     patch_size = 24
     dropout_train = 1.0
     learning_rate = 0.005
-    corruption = 0.1
+    corruption = 0.05
     binarize_threshold = 0.1 # The grey level threshold for binarization of the auto encoder result
-    visualise_validation = True
+    visualise_validation = False
     run_on_test_set = True
     run_on_train_set = True

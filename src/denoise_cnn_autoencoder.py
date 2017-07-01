@@ -16,7 +16,7 @@ import scipy.misc
 import matplotlib.image as mpimg
 from skimage.transform import resize
 from sklearn.feature_extraction import image as skimg
-
+from tqdm import tqdm
 from cnn_autoencoder.model import cnn_ae, cnn_ae_ethan
 from cnn_autoencoder.cnn_ae_config import Config as conf
 from scipy.ndimage.interpolation import rotate
@@ -285,7 +285,8 @@ def mainFunc(argv):
             n = train.shape[0]
             perm_idx = np.random.permutation(n)
             batch_index = 1
-            for step in range(int(n / conf.batch_size)):
+            num_batches = int(n / conf.batch_size)
+            for step in tqdm(range(num_batches)):
                 offset = (batch_index*conf.batch_size) % (n - conf.batch_size)
                 batch_indices = perm_idx[offset:(offset + conf.batch_size)]
 

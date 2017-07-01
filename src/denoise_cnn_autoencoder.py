@@ -47,7 +47,7 @@ def corrupt(data, nu, type='salt_and_pepper'):
 def extract_patches(filename_base, num_images, patch_size=conf.patch_size, phase='train'):
     patches = []
     for i in range(1, num_images+1):
-        elif phase == 'test':
+        if phase == 'test':
             imageid = "raw_test_%d_pixels" % i
             image_filename = filename_base + imageid + ".png"
             if os.path.isfile(image_filename):

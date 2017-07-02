@@ -141,25 +141,41 @@ def corrupt(data, nu, type='salt_and_pepper'):
         raise ValueError('Unsupported noise type')
     return tmp
 
-def load_images_to_predict(filename_base, num_images, patch_size=conf.patch_size, phase='test'):
+def load_patches_to_predict(directory_path, num_images, patch_size=conf.patch_size, phase='test'):
+    """
+    Loads prediction images and splits them up into patches.
+    
+    :param directory_path: The directory to load images from
+    :param num_images: Number of images to load
+    :param patch_size: The desired patch size. For prediction, the stride will be 1.
+    :param phase: Whether the image to load are from the test or training dataset.
+                  Must be 'test' or 'train_cnn_output'.
+                  (This is important for the filename and resizing size.)
+
+    :return: A tensor of patches with dimensions
+        (num_images, vertical patch count, horizontal patch count, patch_size, patch_size)
+    """
     patches = []
+    if phase == 'test':
+        base_filename = "raw_test_%d_pixels"
+        resize_size = conf.test_image_resize
+    elif phase == 'train_cnn_output':
+        base_filename = "raw_satImage_%.3d_pixels"
+        resize_size = conf.train_image_resize
+    else:
+        raise ValueError('Unsupported phase')
+
     for i in range(1, num_images+1):
-        if phase == 'test':
-            imageid = "raw_test_%d_pixels" % i
-            image_filename = filename_base + imageid + ".png"
-            if os.path.isfile(image_filename):
-                img = mpimg.imread(image_filename)
-                img = resize(img, (conf.test_image_resize,conf.test_image_resize))
-                patches.append(skimg.extract_patches(img, (patch_size, patch_size), extraction_step=1))
-        elif phase == 'train_cnn_output':
-            imageid = "raw_satImage_%.3d_pixels" % i
-            image_filename = filename_base + imageid + ".png"
-            if os.path.isfile(image_filename):
-                img = mpimg.imread(image_filename)
-                img = resize(img, (conf.train_image_resize,conf.train_image_resize))
-                patches.append(skimg.extract_patches(img, (patch_size, patch_size), extraction_step=1))
-        else:
-            raise ValueError('incorrect phase')
+        imageid = base_filename % i
+        image_filename = directory_path + imageid + ".png"
+
+        if os.path.isfile(image_filename):
+            img = mpimg.imread(image_filename)
+            # Resize images s.t. one patch is represented by a single pixel
+            img = resize(img, (resize_size, resize_size))
+
+            # For prediction we always extract patches with stride 1 and then average the predictions
+            patches.append(skimg.extract_patches(img, (patch_size, patch_size), extraction_step=1))
     stacked_image_patches = np.stack(patches)
     return stacked_image_patches
 
@@ -344,7 +360,7 @@ def mainFunc(argv):
                 raise ValueError('no CNN train data to run Denoising Autoencoder on')
 
             print("Loading train set")
-            patches_to_predict = load_images_to_predict(prediction_train_dir, conf.train_size, conf.patch_size, 'train_cnn_output')
+            patches_to_predict = load_patches_to_predict(prediction_train_dir, conf.train_size, conf.patch_size, 'train_cnn_output')
             print("Shape of patches_to_predict: {}".format(patches_to_predict.shape))
             patches_per_predict_image_dim = patches_to_predict.shape[1] # Assume square images
             patches_to_predict = patches_to_predict.reshape((-1, conf.patch_size, conf.patch_size))
@@ -402,7 +418,7 @@ def mainFunc(argv):
             if not os.path.isdir(prediction_test_dir):
                 raise ValueError('no CNN data to run Convolutional Denoising Autoencoder on')
 
-            patches_to_predict = load_images_to_predict(prediction_test_dir, conf.train_size, conf.patch_size,
+            patches_to_predict = load_patches_to_predict(prediction_test_dir, conf.train_size, conf.patch_size,
                                                         'test')
             print("Shape of patches_to_predict: {}".format(patches_to_predict.shape))
             patches_per_predict_image_dim = patches_to_predict.shape[1]  # Assume square images

@@ -36,5 +36,5 @@ cp data/test_set/*.png data/test_set/downsampled
 cp data/training/groundtruth/*.png data/training/groundtruth/downsampled
 cp data/training/images/*.png data/training/images/downsampled
 cd src
-python cilutil/resizing.py
+python3 cilutil/resizing.py
 cd ..

@@ -10,10 +10,10 @@ class Config():
     test_image_size = 608 # test images are of size 608 x 608
     cnn_res = 16
     gt_res = 16
-    train_image_resize = train_image_size // gt_res # 50
-    test_image_resize = test_image_size // gt_res # 76
-    train_size = 100 # train data set size
-    test_size = 50 # test data set size
+    train_image_resize = 50
+    test_image_resize = 76
+    train_size = 10 # train data set size
+    test_size = 5 # test data set size, min 5!
     patch_size = 24
     dropout_train = 1.0
     learning_rate = 0.005
@@ -21,4 +21,6 @@ class Config():
     corruption = 0.075
     visualise_validation = True
     run_on_test_set = True
-    run_on_train_set = True
+    run_on_train_set = False
+    stack_1 = False
+    stack_2 = False

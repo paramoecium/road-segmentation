@@ -26,15 +26,19 @@ np.random.seed(123)
 
 def corrupt(data, nu, type='salt_and_pepper'):
     """
-    Corrupts the data for inputing into the de-noising autoencoder
+    Corrupts the data that serves as training data for the de-noising convolutinoal autoencoder
 
     Args:
-        data: numpy array of size (num_points, 1, img_size, img_size)
+        data: numpy array of size (num_patches, img_size, img_size)
         nu: corruption level
+        type: Type of noise that should be generated.
+              Currently 'salt_and_pepper' and 'random_neighbourhood' are supported
     Returns:
-        numpy array of size (num_points, 1, img_size, img_size)
+        numpy array of size (num_patches, img_size, img_size)
     """
+
     if type == 'salt_and_pepper':
+        # Apply typical salt and pepper noise, flipping a random subset of the pixels
         img_max = np.ones(data.shape, dtype=bool)
         tmp = np.copy(data)
         img_max[data <= 0.5] = False
@@ -45,6 +49,16 @@ def corrupt(data, nu, type='salt_and_pepper'):
     elif type == 'random_neighbourhood':
 
         def get_neighbourhood(img, i, j):
+            """
+            Auxiliary function. Given the input img, outputs the 3x3 neighbourhood of the pixel indexed by i,j.
+            If i or j lie on the border of the img, then the neighbourhood might be smaller than 3x3. (no padding is used)
+
+            :param img: The input image to get the 3x3 neighbourhood from
+            :param i: The first-dimension index of the center pixel
+            :param j: The second-dimension index of the center pixel
+            :return: An array of max 3x3 size of the neighbouring pixels, A tuple setting the center pixel in the returned neighbourhood array
+            """
+
             startPosX = i - 1
             startPosY = j - 1
             endPosX = i + 2
@@ -65,6 +79,19 @@ def corrupt(data, nu, type='salt_and_pepper'):
             return img[startPosX:endPosX, startPosY:endPosY], (centerX, centerY)
 
         def randomly_flip_8_neighbourhood(data, i, j, minval, maxval, neighbour_flip_prob):
+            """
+            Looks at the 8-neighbourhood and randomly flips the neighbours.
+
+            :param data: The original image
+            :param i: The first-dimension index of the center pixel for which to look at the neighbourhood
+            :param j: The second-dimension index of the center pixel for which to look at the neighbourhood
+            :param minval: The minimum intensity level in the original image.
+                           Flipped high-intensity pixels will be set to this value.
+            :param maxval: The maximum intensity level in the original image.
+                           Flipped low-intensity pixels will be set to this value.
+            :param neighbour_flip_prob: The probability with which each of the neighbouring pixels will be flipped.
+            """
+
             neighbours, centerPos = get_neighbourhood(data, i, j)
 
             # Choose a random mask of the 8 neighbours to flip
@@ -78,12 +105,10 @@ def corrupt(data, nu, type='salt_and_pepper'):
             replace_arr = np.full(shape=neighbours.shape, fill_value=replace_val)
             neighbours[mask] = replace_arr[mask]
 
-        RANDOMIZATIONS_NEEDED = 2
-        FLIP_BASE_CHANCE = 0.5
-        FLIP_8NEIGHBOURHOOD_CHANCE = 0.8
-        NEIGHBOUR_FLIP_PROB_BACKGROUND = 0.025
-        NEIGHBOUR_FLIP_PROB_ROAD = 0.9
-        FLIP_ROAD_BACK_THRESHOLD = 0.2
+        FLIP_8NEIGHBOURHOOD_CHANCE = 0.4 # Chance that the randomly selected pixel will be flipped.
+        NEIGHBOUR_FLIP_PROB_BACKGROUND = 0.025 # Given that the center pixel is a background pixel, with what probability do we flip the neighbours?
+        NEIGHBOUR_FLIP_PROB_ROAD = 0.9 # Given that the center pixel is a road pixel, with what probability do we flip the neighbours?
+        FLIP_ROAD_BACK_THRESHOLD = 0.2 # Threshold for a pixel to be considered a road pixel for corruption.
 
         tmp = np.copy(data)
         minval = tmp.min()
@@ -92,24 +117,25 @@ def corrupt(data, nu, type='salt_and_pepper'):
         assert tmp.shape[1] == tmp.shape[2] # Assume square images
         image_width = tmp.shape[1]
         num_patches = tmp.shape[0]
+
         # Sample random image indices (separately for the i- and j-dimensions)
         flips_per_image= int(image_width**2 * nu)
         random_indices = np.random.randint(0, image_width, (num_patches, flips_per_image, 2))
 
         # Sample all the random numbers beforehand to speedup things
-        flip_probabilities = np.random.random(size=(num_patches, flips_per_image, RANDOMIZATIONS_NEEDED))
+        flip_probabilities = np.random.random(size=(num_patches, flips_per_image))
 
         for idxpatch in range(num_patches):
-
             for idxcount, indices in enumerate(random_indices[idxpatch,...]):
                 i, j = indices
-                if flip_probabilities[idxpatch, idxcount, 0] < FLIP_BASE_CHANCE: # Apply flip only with base chance of 50 %
 
-                    if flip_probabilities[idxpatch, idxcount, 1] < FLIP_8NEIGHBOURHOOD_CHANCE:
-                        neighbour_flip_prob = NEIGHBOUR_FLIP_PROB_ROAD if tmp[idxpatch,i,j] >= FLIP_ROAD_BACK_THRESHOLD else NEIGHBOUR_FLIP_PROB_BACKGROUND
-                        # Else we also flip the neighbourhood.
-                        # With 50 % chance we flip either the 8- or 4-neighbourhood
-                        randomly_flip_8_neighbourhood(tmp[idxpatch,...], i, j, minval, maxval, neighbour_flip_prob)
+                # From the randomly selected pixels, only a random subset will be considered for flipping
+                if flip_probabilities[idxpatch, idxcount] < FLIP_8NEIGHBOURHOOD_CHANCE:
+                    # Consider differing flipping probabilities for road or background pixels
+                    neighbour_flip_prob = NEIGHBOUR_FLIP_PROB_ROAD if tmp[idxpatch,i,j] >= FLIP_ROAD_BACK_THRESHOLD \
+                                                                   else NEIGHBOUR_FLIP_PROB_BACKGROUND
+
+                    randomly_flip_8_neighbourhood(tmp[idxpatch,...], i, j, minval, maxval, neighbour_flip_prob)
     return tmp
 
 def load_images_to_predict(filename_base, num_images, patch_size=conf.patch_size, phase='test'):

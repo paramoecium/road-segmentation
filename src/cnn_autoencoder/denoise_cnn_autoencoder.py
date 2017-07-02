@@ -17,8 +17,8 @@ import matplotlib.image as mpimg
 from skimage.transform import resize
 from sklearn.feature_extraction import image as skimg
 from tqdm import tqdm
-from cnn_autoencoder.model import cnn_ae, cnn_ae_ethan
-from cnn_autoencoder.cnn_ae_config import Config as conf
+from model import cnn_ae, cnn_ae_ethan
+from cnn_ae_config import Config as conf
 from scipy.ndimage.interpolation import rotate
 
 tf.set_random_seed(123)

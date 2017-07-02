@@ -24,7 +24,7 @@ BATCH_SIZE = 16  # 64
 
 TERMINATE_AFTER_TIME = True
 NUM_EPOCHS = 1
-MAX_TRAINING_TIME_IN_SEC = 20
+MAX_TRAINING_TIME_IN_SEC = 220*60
 
 RESTORE_MODEL = False  # If True, restore existing model instead of training a new one
 RECORDING_STEP = 1000

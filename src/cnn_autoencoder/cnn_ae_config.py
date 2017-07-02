@@ -19,6 +19,5 @@ class Config():
     learning_rate = 0.005
     corruption = 0.05
     binarize_threshold = 0.1 # The grey level threshold for binarization of the auto encoder result
-    visualise_validation = False
     run_on_test_set = True
     run_on_train_set = True

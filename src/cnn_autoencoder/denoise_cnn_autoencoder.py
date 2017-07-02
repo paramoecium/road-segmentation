@@ -397,25 +397,6 @@ def mainFunc(argv):
                 # resizing test images to 400x400 and saving to disk
                 scipy.misc.imsave(output_path + img_name + ".png", resize_img(prediction, 'train'))
 
-        if conf.visualise_validation:
-            print("Visualising encoder results and true images from train set")
-            f, a = plt.subplots(2, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
-            for i in range(conf.examples_to_show):
-                inputs = validation[i*patches_per_image_train:(i+1)*patches_per_image_train,:]
-                feed_dict = model.make_inputs_predict(inputs)
-                encode_decode = sess.run(model.y_pred, feed_dict=feed_dict) ## predictions from model are [batch_size, dim, dim, n_channels] i.e. (3125, 16, 16, 1)
-                print("shape of predictions: {}".format(encode_decode.shape)) # (100, 16, 16, 1)
-                val = reconstruct_image_from_patches(inputs, 50)
-                pred = reconstruct_image_from_patches(encode_decode[:, :, :, 0].reshape(-1, conf.patch_size ** 2), 50) ## train images rescaled to 50 by 50 granularity
-                a[0][i].imshow(val, cmap='gray', interpolation='none')
-                a[1][i].imshow(pred, cmap='gray', interpolation='none')
-                a[0][i].get_xaxis().set_visible(False)
-                a[0][i].get_yaxis().set_visible(False)
-                a[1][i].get_xaxis().set_visible(False)
-                a[1][i].get_yaxis().set_visible(False)
-            plt.gray()
-            plt.savefig('./cnn_autoencoder_eval_{}.png'.format(tag))
-
         if conf.run_on_test_set:
             print("Running the Convolutional Denoising Autoencoder on the predictions")
             prediction_test_dir = "../results/CNN_Output/test/high_res_raw/"
@@ -464,18 +445,6 @@ def mainFunc(argv):
 
                 resized_binarized_output_images = resize_img(binarized_prediction, 'test')
                 scipy.misc.imsave(binarize_output_path + img_name + ".png", resized_binarized_output_images)
-            f, a = plt.subplots(2, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
-            for i in range(conf.examples_to_show):
-                t = reconstruct_image_from_patches(test[i * patches_per_image_test:(i + 1) * patches_per_image_test, :], (conf.test_image_size // conf.cnn_res)) # (conf.test_image_size // conf.cnn_res) = 38
-                pred = reconstruct_image_from_patches(predictions[i * patches_per_image_test:(i + 1) * patches_per_image_test, :], 38)
-                a[0][i].imshow(t, cmap='gray', interpolation='none')
-                a[1][i].imshow(pred, cmap='gray', interpolation='none')
-                a[0][i].get_xaxis().set_visible(False)
-                a[0][i].get_yaxis().set_visible(False)
-                a[1][i].get_xaxis().set_visible(False)
-                a[1][i].get_yaxis().set_visible(False)
-            plt.gray()
-            plt.savefig('./cnn_autoencoder_prediction_{}.png'.format(tag))
 
             print("Finished saving cnn autoencoder test set to disk")
 

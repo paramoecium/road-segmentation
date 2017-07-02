@@ -11,6 +11,7 @@ import getopt
 import pdb
 import math
 import logging
+import shutil
 import scipy
 import scipy.misc
 import matplotlib.image as mpimg
@@ -307,7 +308,7 @@ def mainFunc(argv):
     validation = uncorrupted_validation_data
 
     print("Initializing CNN denoising autoencoder")
-    model = cnn_ae_model(conf.patch_size, learning_rate=conf.learning_rate)
+    model = cnn_ae_model(conf.patch_size, learning_rate=conf.learning_rate, skip_connection=conf.skip_connection)
 
     print("Starting TensorFlow session")
     with tf.Session(config=configProto) as sess:

@@ -1,6 +1,5 @@
-""" CNN De-noising Auto Encoder Example.
-ref: https://github.com/pkmital/tensorflow_tutorials/blob/master/python/09_convolutional_autoencoder.py
-"""
+"""Denoising convolutional autoencoder"""
+
 import math
 import tensorflow as tf
 import numpy as np
@@ -9,10 +8,12 @@ class cnn_ae_model():
     """Simple 2 layer model"""
     def __init__(self,
                  w, ## dim of the inputs,
-                 learning_rate=0.005):
+                 learning_rate=0.005,
+                 skip_connection=False):
 
         self.w = w
         self.learning_rate = learning_rate
+        self.skip_connection = skip_connection
         self._make_graph()
 
     def _make_graph(self):
@@ -69,29 +70,70 @@ class cnn_ae_model():
 
     def _build_graph(self):
 
-        W_e_conv1 = self.weight_variable([5, 5, 1, 16], "w_e_conv1")
-        b_e_conv1 = self.bias_variable([16], "b_e_conv1")
-        h_e_conv1 = tf.nn.relu(tf.add(self.conv2d(self.x_origin_noise, W_e_conv1), b_e_conv1))
+        if self.skip_connection:
+            print("Initializing skip connection CAE")
+            # encoder
+            W_e_conv1 = self.weight_variable([5, 5, 1, 16], "w_e_conv1")
+            b_e_conv1 = self.bias_variable([16], "b_e_conv1")
+            self.h_e_conv1 = tf.nn.relu(tf.add(self.conv2d(self.x_origin_noise, W_e_conv1), b_e_conv1)) # h_e_conv1: (batch_size, 12, 12, 16)
 
-        W_e_conv2 = self.weight_variable([3, 3, 16, 32], "w_e_conv2")
-        b_e_conv2 = self.bias_variable([32], "b_e_conv2")
-        h_e_conv2 = tf.nn.relu(tf.add(self.conv2d(h_e_conv1, W_e_conv2), b_e_conv2))
+            W_e_conv2 = self.weight_variable([5, 5, 16, 32], "w_e_conv2")
+            b_e_conv2 = self.bias_variable([32], "b_e_conv2")
+            self.h_e_conv2 = tf.nn.relu(tf.add(self.conv2d(self.h_e_conv1, W_e_conv2), b_e_conv2)) # h_e_conv2: (batch_size, 6, 6, 32)
 
-        code_layer = h_e_conv2
-        print("code layer shape : %s" % h_e_conv2.get_shape())
+            W_e_conv3 = self.weight_variable([5, 5, 32, 32], "w_e_conv2")
+            b_e_conv3 = self.bias_variable([32], "b_e_conv2")
+            self.h_e_conv3 = tf.nn.relu(tf.add(self.conv2d(self.h_e_conv2, W_e_conv3), b_e_conv3)) # h_e_conv2: (batch_size, 6, 6, 32)
 
-        W_d_conv1 = self.weight_variable([5, 5, 16, 32], "w_d_conv1")
-        b_d_conv1 = self.bias_variable([1], "b_d_conv1")
-        output_shape_d_conv1 = tf.stack([tf.shape(self.x_noise)[0], int(self.w/2), int(self.w/2), 16])
-        h_d_conv1 = tf.nn.relu(self.deconv2d(h_e_conv2, W_d_conv1, output_shape_d_conv1))
+            # decoder
+            W_d_conv1 = self.weight_variable([5, 5, 32, 32], "w_d_conv1")
+            b_d_conv1 = self.bias_variable([32], "b_d_conv1")
+            output_shape_d_conv1 = tf.stack([tf.shape(self.x_noise)[0], 6, 6, 32])
+            self.h_d_conv1 = tf.nn.relu(tf.add(
+                                        self.deconv2d(self.h_e_conv3, W_d_conv1, output_shape_d_conv1),
+                                        self.h_e_conv2)
+                                        )
 
-        W_d_conv2 = self.weight_variable([5, 5, 1, 16], "w_d_conv2")
-        b_d_conv2 = self.bias_variable([16], "b_d_conv2")
-        output_shape_d_conv2 = tf.stack([tf.shape(self.x_noise)[0], self.w, self.w, 1])
-        h_d_conv2 = tf.nn.relu(self.deconv2d(h_d_conv1, W_d_conv2, output_shape_d_conv2))
+            W_d_conv2 = self.weight_variable([5, 5, 16, 32], "w_d_conv2")
+            b_d_conv2 = self.bias_variable([16], "b_d_conv2")
+            output_shape_d_conv2 = tf.stack([tf.shape(self.x_noise)[0], int(self.w/2), int(self.w/2), 16])
+            self.h_d_conv2 = tf.nn.relu(self.deconv2d(self.h_d_conv1, W_d_conv2, output_shape_d_conv2))
 
-        self.y_pred = h_d_conv2
-        print("reconstruct layer shape : %s" % self.y_pred.get_shape())
+            W_d_conv3 = self.weight_variable([5, 5, 1, 16], "w_d_conv2")
+            b_d_conv3 = self.bias_variable([1], "b_d_conv2")
+            output_shape_d_conv3 = tf.stack([tf.shape(self.x_noise)[0], self.w, self.w, 1])
+            self.h_d_conv3 = tf.nn.relu(tf.add(
+                                               self.deconv2d(self.h_d_conv2, W_d_conv3, output_shape_d_conv3),
+                                               self.x_origin_noise)
+                                               )
+
+            self.y_pred = self.h_d_conv3
+            print("reconstruct layer shape : %s" % self.y_pred.get_shape())
+
+        else:
+            """Simple 2 layer model"""
+            W_e_conv1 = self.weight_variable([5, 5, 1, 16], "w_e_conv1")
+            b_e_conv1 = self.bias_variable([16], "b_e_conv1")
+            self.h_e_conv1 = tf.nn.relu(tf.add(self.conv2d(self.x_origin_noise, W_e_conv1), b_e_conv1)) # h_e_conv1: (batch_size, 12, 12, 16)
+
+            W_e_conv2 = self.weight_variable([3, 3, 16, 32], "w_e_conv2")
+            b_e_conv2 = self.bias_variable([32], "b_e_conv2")
+            self.h_e_conv2 = tf.nn.relu(tf.add(self.conv2d(self.h_e_conv1, W_e_conv2), b_e_conv2)) # h_e_conv2: (batch_size, 6, 6, 32)
+
+            print("code layer shape : %s" % self.h_e_conv2.get_shape())
+
+            W_d_conv1 = self.weight_variable([5, 5, 16, 32], "w_d_conv1")
+            b_d_conv1 = self.bias_variable([1], "b_d_conv1")
+            output_shape_d_conv1 = tf.stack([tf.shape(self.x_noise)[0], int(self.w/2), int(self.w/2), 16])
+            self.h_d_conv1 = tf.nn.relu(self.deconv2d(self.h_e_conv2, W_d_conv1, output_shape_d_conv1)) # h_d_conv1: (batch_size, 12, 12, 16)
+
+            W_d_conv2 = self.weight_variable([5, 5, 1, 16], "w_d_conv2")
+            b_d_conv2 = self.bias_variable([16], "b_d_conv2")
+            output_shape_d_conv2 = tf.stack([tf.shape(self.x_noise)[0], self.w, self.w, 1])
+            self.h_d_conv2 = tf.nn.relu(self.deconv2d(self.h_d_conv1, W_d_conv2, output_shape_d_conv2)) # h_d_conv2: (batch_size, 24, 24, 1)
+
+            self.y_pred = self.h_d_conv2
+            print("reconstruct layer shape : %s" % self.y_pred.get_shape())
 
     def _init_optimizer(self):
         self.loss = tf.reduce_mean(tf.pow(self.x_origin - self.y_pred, 2))

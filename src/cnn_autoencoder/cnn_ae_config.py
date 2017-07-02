@@ -21,3 +21,4 @@ class Config():
     binarize_threshold = 0.1 # The grey level threshold for binarization of the auto encoder result
     run_on_test_set = True
     run_on_train_set = True
+    skip_connection = False

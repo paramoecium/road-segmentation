@@ -58,7 +58,7 @@ def extract_patches(filename_base, num_images, patch_size=conf.patch_size, phase
             image_filename = filename_base + imageid + ".png"
             if os.path.isfile(image_filename):
                 img = mpimg.imread(image_filename)
-                img = resize(img, (50,50))
+                img = resize(img, (conf.train_image_resize,conf.train_image_resize))
                 patches.append(image.extract_patches(img, (patch_size, patch_size), extraction_step=1))
                 patches.append(image.extract_patches(np.rot90(img), (patch_size, patch_size), extraction_step=1))
         elif phase == 'test':
@@ -66,14 +66,14 @@ def extract_patches(filename_base, num_images, patch_size=conf.patch_size, phase
             image_filename = filename_base + imageid + ".png"
             if os.path.isfile(image_filename):
                 img = mpimg.imread(image_filename)
-                img = resize(img, (38,38))
+                img = resize(img, (conf.train_image_resize, conf.train))
                 patches.append(image.extract_patches(img, (patch_size, patch_size), extraction_step=1))
         elif phase == 'train_cnn_output':
             imageid = "raw_satImage_%.3d_pixels" % i
             image_filename = filename_base + imageid + ".png"
             if os.path.isfile(image_filename):
                 img = mpimg.imread(image_filename)
-                img = resize(img, (50,50))
+                img = resize(img, (conf.train_image_resize, conf.train_image_resize))
                 patches.append(image.extract_patches(img, (patch_size, patch_size), extraction_step=1))
         else:
             raise ValueError('incorrect phase')
@@ -341,7 +341,8 @@ def mainFunc(argv):
                     raise ValueError('no CNN data to run Convolutional Denoising Autoencoder on')
                 prediction = reconstruction(predictions[i*patches_per_image_test:(i+1)*patches_per_image_test,:], 38) # 38 is the resized test set dim as resolution is 16x16
                 # resizing test images to 608x608 and saving to disk
-                scipy.misc.imsave(output_path + img_name + ".png", resize_img(prediction, 'test'))
+                # scipy.misc.imsave(output_path + img_name + ".png", resize_img(prediction, 'test'))
+                scipy.misc.imsave(output_path + img_name + ".png", prediction) # on resize
 
             f, a = plt.subplots(2, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
             for i in range(conf.examples_to_show):

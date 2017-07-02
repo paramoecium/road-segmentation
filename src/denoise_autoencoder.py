@@ -58,7 +58,7 @@ def extract_patches(filename_base, num_images, patch_size=conf.patch_size, phase
             image_filename = filename_base + imageid + ".png"
             if os.path.isfile(image_filename):
                 img = mpimg.imread(image_filename)
-                img = resize(img, (50,50))
+                img = resize(img, (conf.train_image_resize,conf.train_image_resize))
                 patches.append(image.extract_patches(img, (patch_size, patch_size), extraction_step=1))
                 patches.append(image.extract_patches(np.rot90(img), (patch_size, patch_size), extraction_step=1))
         elif phase == 'test':
@@ -66,14 +66,14 @@ def extract_patches(filename_base, num_images, patch_size=conf.patch_size, phase
             image_filename = filename_base + imageid + ".png"
             if os.path.isfile(image_filename):
                 img = mpimg.imread(image_filename)
-                img = resize(img, (38,38))
+                img = resize(img, (conf.train_image_resize, conf.train))
                 patches.append(image.extract_patches(img, (patch_size, patch_size), extraction_step=1))
         elif phase == 'train_cnn_output':
             imageid = "raw_satImage_%.3d_pixels" % i
             image_filename = filename_base + imageid + ".png"
             if os.path.isfile(image_filename):
                 img = mpimg.imread(image_filename)
-                img = resize(img, (50,50))
+                img = resize(img, (conf.train_image_resize, conf.train_image_resize))
                 patches.append(image.extract_patches(img, (patch_size, patch_size), extraction_step=1))
         else:
             raise ValueError('incorrect phase')

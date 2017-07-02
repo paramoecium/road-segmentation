@@ -9,7 +9,9 @@ class Config():
     train_image_size = 400 # train images are of size 400 x 400
     test_image_size = 608 # test images are of size 608 x 608
     cnn_res = 16
-    gt_res = 8
+    gt_res = 16
+    train_image_resize = train_image_size // gt_res # 50
+    test_image_resize = test_image_size // gt_res # 76
     train_size = 100 # train data set size
     test_size = 50 # test data set size
     patch_size = 24

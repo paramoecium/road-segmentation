@@ -19,14 +19,3 @@ def masks_to_submission(submission_filename, *image_filenames):
                     patch = im[i:i + patch_size, j:j + patch_size]
                     label = 1 if np.mean(patch) > foreground_threshold else 0
                     f.writelines("{:03d}_{}_{},{}\n".format(img_number, j, i, label))
-
-
-if __name__ == '__main__':
-    submission_filename = 'submission_cae_ethan_patchsize24.csv'
-    image_filenames = []
-    for i in range(1, 51):
-        ##image_filename = '../results/CNN_Output/test/high_res_raw/raw_test_' + '%.1d' % i + '_pixels.png' # baseline
-        image_filename = '../results/CNN_Autoencoder_Output/test/cnn_ae_test_' + '%.1d' % i + '.png' # cae
-        print(image_filename)
-        image_filenames.append(image_filename)
-    masks_to_submission(submission_filename, *image_filenames)

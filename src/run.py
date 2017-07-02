@@ -10,7 +10,7 @@ are not found cached on the disk, this script automatically trains them
 
 """
 import glob
-
+from masks_to_submission import masks_to_submission
 import model_weightedloss as cnn
 import postprocessing as pp
 from cilutil import resizing

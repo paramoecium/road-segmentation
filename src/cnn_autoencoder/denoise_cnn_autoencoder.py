@@ -270,6 +270,7 @@ def mainFunc(argv):
         elif opt in ("-t", "--tag"):
             tag = arg
 
+    # Setting the number of CPU cores is only relevant for Euler.
     print("Executing autoencoder with {} CPU cores".format(num_cores))
     if num_cores != -1:
         # We set the op_parallelism_threads in the ConfigProto and pass it to the TensorFlow session
@@ -281,6 +282,7 @@ def mainFunc(argv):
     print("loading ground truth data")
     train_data_directory = "../data/training/groundtruth/"
 
+    # We randomly choose the validation images
     img_indices = np.arange(conf.train_size)
     validation_img_indices = np.random.choice(conf.train_size, size=conf.val_size, replace=False)
     validation_img_mask = np.zeros(conf.train_size, dtype=bool)
@@ -288,27 +290,24 @@ def mainFunc(argv):
     train_img_mask = np.invert(validation_img_mask)
     train_img_indices = img_indices[train_img_mask]
 
+    # Create the uncorrupted images from the groundtruth
     uncorrupted_train_data = create_uncorrupted_data(train_data_directory, train_img_indices, conf.patch_size)
     uncorrupted_validation_data = create_uncorrupted_data(train_data_directory, validation_img_indices, conf.patch_size)
 
     print("Shape of training data: {}".format(uncorrupted_train_data.shape))
     patches_per_image_train = uncorrupted_train_data.shape[1] * uncorrupted_train_data.shape[2]
-    print("Patches per train image: {}".format(patches_per_image_train)) # 729 for patch size 24
+    print("Patches per train image: {}".format(patches_per_image_train))
 
+    # Reshape to get rid of unnecessary dimensions
     uncorrupted_train_data = uncorrupted_train_data.reshape((-1, conf.patch_size, conf.patch_size))
     uncorrupted_validation_data = uncorrupted_validation_data.reshape((-1, conf.patch_size, conf.patch_size))
-    print("Adding noise to training data")
 
     train = uncorrupted_train_data
     targets = uncorrupted_train_data
     validation = uncorrupted_validation_data
+
     print("Initializing CNN denoising autoencoder")
-    # model = cnn_ae(conf.patch_size**2, ## dim of the inputs
-    #                n_filters=[1, 16, 32, 64],
-    #                filter_sizes=[7, 5, 3, 3],
-    #                learning_rate=conf.learning_rate)
-    model = cnn_ae_ethan(conf.patch_size, ## dim of the inputs Not patch_size**2
-                         learning_rate=conf.learning_rate)
+    model = cnn_ae_ethan(conf.patch_size, learning_rate=conf.learning_rate)
 
     print("Starting TensorFlow session")
     with tf.Session(config=configProto) as sess:
@@ -337,11 +336,11 @@ def mainFunc(argv):
             n = train.shape[0]
             perm_idx = np.random.permutation(n)
             batch_index = 1
-            num_batches = int(n / conf.batch_size)
-            for step in tqdm(range(num_batches)):
+            for step in tqdm(range(int(n / conf.batch_size))):
                 offset = (batch_index*conf.batch_size) % (n - conf.batch_size)
                 batch_indices = perm_idx[offset:(offset + conf.batch_size)]
 
+                # Corrupt the CNN input, but keep the training targets intact
                 batch_inputs = corrupt(train[batch_indices,:], conf.corruption, 'random_neighbourhood')
                 batch_targets = targets[batch_indices,:]
                 feed_dict = model.make_inputs(batch_inputs, batch_targets)
@@ -362,7 +361,7 @@ def mainFunc(argv):
             print("Running Convolutional Denoising Autoencoder on training images for upstream classification")
             prediction_train_dir = "../results/CNN_Output/training/high_res_raw/"
             if not os.path.isdir(prediction_train_dir):
-                raise ValueError('no CNN train data to run Denoising Autoencoder on')
+                os.makedirs(prediction_train_dir)
 
             print("Loading train set")
             patches_to_predict = load_patches_to_predict(prediction_train_dir, conf.train_size, conf.patch_size, 'train_cnn_output')
@@ -393,7 +392,7 @@ def mainFunc(argv):
                 img_name = "cnn_ae_train_" + str(i+1)
                 output_path = "../results/CNN_Autoencoder_Output/train/"
                 if not os.path.isdir(output_path):
-                    os.mkdir(output_path)
+                    os.makedirs(output_path)
                 prediction = reconstruct_image_from_patches(predictions[i * patches_per_predict_image_dim ** 2:(i + 1) * patches_per_predict_image_dim ** 2, :], patches_per_predict_image_dim, conf.train_image_resize)
                 # resizing test images to 400x400 and saving to disk
                 scipy.misc.imsave(output_path + img_name + ".png", resize_img(prediction, 'train'))
@@ -421,11 +420,10 @@ def mainFunc(argv):
             print("Running the Convolutional Denoising Autoencoder on the predictions")
             prediction_test_dir = "../results/CNN_Output/test/high_res_raw/"
             if not os.path.isdir(prediction_test_dir):
-                raise ValueError('no CNN data to run Convolutional Denoising Autoencoder on')
+                os.makedirs(prediction_test_dir)
 
-            patches_to_predict = load_patches_to_predict(prediction_test_dir, conf.train_size, conf.patch_size,
-                                                        'test')
-            print("Shape of patches_to_predict: {}".format(patches_to_predict.shape))
+            patches_to_predict = load_patches_to_predict(prediction_test_dir, conf.train_size, conf.patch_size, 'test')
+            print("Shape of patches_to_predict for training data: {}".format(patches_to_predict.shape))
             patches_per_predict_image_dim = patches_to_predict.shape[1]  # Assume square images
             patches_to_predict = patches_to_predict.reshape((-1, conf.patch_size, conf.patch_size))
             predictions = []
@@ -442,9 +440,9 @@ def mainFunc(argv):
                 prediction = sess.run(model.y_pred, feed_dict)
                 predictions.append(prediction)
 
-            print("individual prediction shape: {}".format(predictions[0].shape))
+            print("individual training image prediction shape: {}".format(predictions[0].shape))
             predictions = np.concatenate(predictions, axis=0)
-            print("Shape of predictions: {}".format(predictions.shape))
+            print("Shape of training image predictions: {}".format(predictions.shape))
 
             # Save outputs to disk
             for i in range(conf.test_size):

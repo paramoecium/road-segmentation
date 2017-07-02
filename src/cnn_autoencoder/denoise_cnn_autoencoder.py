@@ -21,6 +21,7 @@ from model import cnn_ae, cnn_ae_ethan
 from cnn_ae_config import Config as conf
 from scipy.ndimage.interpolation import rotate
 
+# Random seed for reproducibility. May be removed
 tf.set_random_seed(123)
 np.random.seed(123)
 
@@ -136,6 +137,8 @@ def corrupt(data, nu, type='salt_and_pepper'):
                                                                    else NEIGHBOUR_FLIP_PROB_BACKGROUND
 
                     randomly_flip_8_neighbourhood(tmp[idxpatch,...], i, j, minval, maxval, neighbour_flip_prob)
+    else:
+        raise ValueError('Unsupported noise type')
     return tmp
 
 def load_images_to_predict(filename_base, num_images, patch_size=conf.patch_size, phase='test'):

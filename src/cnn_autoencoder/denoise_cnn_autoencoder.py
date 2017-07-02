@@ -179,28 +179,34 @@ def load_patches_to_predict(directory_path, num_images, patch_size=conf.patch_si
     stacked_image_patches = np.stack(patches)
     return stacked_image_patches
 
-def reconstruction(img_data, patches_per_predict_image_dim, size):
+def reconstruct_image_from_patches(img_data, patches_per_predict_image_dim, size):
     """
-    Reconstruct single image from flattened array.
-    IMPORTANT: overlapping patches are averaged, not replaced like in recontrustion()
+    Reconstruct single image from multiple image patches.
+    IMPORTANT: overlapping patches are averaged
+
     Args:
-        img_data: flattened image array
-        type: size of the image (rescaled)
+        img_data: An array with dimensions (patches_per_predict_image_dim**2, patch size, patch size)
+        patches_per_predict_image_dim: Number of patches for one dimension. We assume image have the same
+                                       dimension horizontally as well as vertically.
+        size: Height/Widgth of the target image.
     Returns:
-        recontructed image
+        recontructed image: An image of (size x size) reconstructed from the patches
     """
 
-    # print("size: {}".format(size))
-    # print("patches_per_dim: {}".format(patches_per_dim))
-    # print("img_data: {}".format(img_data.shape))
     reconstruction = np.zeros((size,size))
     n = np.zeros((size,size))
     idx = 0
+
+    # Loop through all the patches in 2-dim and sum up the pixel values.
+    # (We split up the image with stride 1 before)
+    # Also keep a count array
     for i in range(patches_per_predict_image_dim):
         for j in range(patches_per_predict_image_dim):
             reconstruction[i:(i+conf.patch_size),j:(j+conf.patch_size)] += img_data[idx,:,:,0]
             n[i:(i+conf.patch_size),j:(j+conf.patch_size)] += 1
             idx += 1
+    
+    #Return the arithmetic average
     return np.divide(reconstruction, n)
 
 def binarize(image):
@@ -389,7 +395,7 @@ def mainFunc(argv):
                 output_path = "../results/CNN_Autoencoder_Output/train/"
                 if not os.path.isdir(output_path):
                     raise ValueError('no CNN data to run Convolutional Denoising Autoencoder on')
-                prediction = reconstruction(predictions[i*patches_per_predict_image_dim**2:(i+1)*patches_per_predict_image_dim**2,:], patches_per_predict_image_dim, conf.train_image_resize)
+                prediction = reconstruct_image_from_patches(predictions[i * patches_per_predict_image_dim ** 2:(i + 1) * patches_per_predict_image_dim ** 2, :], patches_per_predict_image_dim, conf.train_image_resize)
                 # resizing test images to 400x400 and saving to disk
                 scipy.misc.imsave(output_path + img_name + ".png", resize_img(prediction, 'train'))
 
@@ -401,8 +407,8 @@ def mainFunc(argv):
                 feed_dict = model.make_inputs_predict(inputs)
                 encode_decode = sess.run(model.y_pred, feed_dict=feed_dict) ## predictions from model are [batch_size, dim, dim, n_channels] i.e. (3125, 16, 16, 1)
                 print("shape of predictions: {}".format(encode_decode.shape)) # (100, 16, 16, 1)
-                val = reconstruction(inputs, 50)
-                pred = reconstruction(encode_decode[:,:,:,0].reshape(-1, conf.patch_size**2), 50) ## train images rescaled to 50 by 50 granularity
+                val = reconstruct_image_from_patches(inputs, 50)
+                pred = reconstruct_image_from_patches(encode_decode[:, :, :, 0].reshape(-1, conf.patch_size ** 2), 50) ## train images rescaled to 50 by 50 granularity
                 a[0][i].imshow(val, cmap='gray', interpolation='none')
                 a[1][i].imshow(pred, cmap='gray', interpolation='none')
                 a[0][i].get_xaxis().set_visible(False)
@@ -451,7 +457,7 @@ def mainFunc(argv):
                     os.makedirs(output_path)
                 if not os.path.exists(binarize_output_path):
                     os.makedirs(binarize_output_path)
-                prediction = reconstruction(
+                prediction = reconstruct_image_from_patches(
                     predictions[i * patches_per_predict_image_dim ** 2:(i + 1) * patches_per_predict_image_dim ** 2, :],
                     patches_per_predict_image_dim, conf.test_image_resize)
                 binarized_prediction = binarize(prediction)
@@ -463,8 +469,8 @@ def mainFunc(argv):
                 scipy.misc.imsave(binarize_output_path + img_name + ".png", resized_binarized_output_images)
             f, a = plt.subplots(2, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
             for i in range(conf.examples_to_show):
-                t = reconstruction(test[i*patches_per_image_test:(i+1)*patches_per_image_test,:], (conf.test_image_size // conf.cnn_res)) # (conf.test_image_size // conf.cnn_res) = 38
-                pred = reconstruction(predictions[i*patches_per_image_test:(i+1)*patches_per_image_test,:], 38)
+                t = reconstruct_image_from_patches(test[i * patches_per_image_test:(i + 1) * patches_per_image_test, :], (conf.test_image_size // conf.cnn_res)) # (conf.test_image_size // conf.cnn_res) = 38
+                pred = reconstruct_image_from_patches(predictions[i * patches_per_image_test:(i + 1) * patches_per_image_test, :], 38)
                 a[0][i].imshow(t, cmap='gray', interpolation='none')
                 a[1][i].imshow(pred, cmap='gray', interpolation='none')
                 a[0][i].get_xaxis().set_visible(False)

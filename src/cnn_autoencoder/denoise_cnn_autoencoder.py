@@ -298,11 +298,10 @@ def mainFunc(argv):
     uncorrupted_train_data = uncorrupted_train_data.reshape((-1, conf.patch_size, conf.patch_size))
     uncorrupted_validation_data = uncorrupted_validation_data.reshape((-1, conf.patch_size, conf.patch_size))
     print("Adding noise to training data")
-    #corrupted_train_data = corrupt(uncorrupted_train_data, conf.corruption, 'random_neighbourhood')
-    #corrupted_validation_data = corrupt(uncorrupted_validation_data, conf.corruption, 'random_neighbourhood')
 
     train = uncorrupted_train_data
     targets = uncorrupted_train_data
+    validation = uncorrupted_validation_data
     print("Initializing CNN denoising autoencoder")
     # model = cnn_ae(conf.patch_size**2, ## dim of the inputs
     #                n_filters=[1, 16, 32, 64],
@@ -367,7 +366,7 @@ def mainFunc(argv):
 
             print("Loading train set")
             patches_to_predict = load_patches_to_predict(prediction_train_dir, conf.train_size, conf.patch_size, 'train_cnn_output')
-            print("Shape of patches_to_predict: {}".format(patches_to_predict.shape))
+            print("Shape of training patches_to_predict: {}".format(patches_to_predict.shape))
             patches_per_predict_image_dim = patches_to_predict.shape[1] # Assume square images
             patches_to_predict = patches_to_predict.reshape((-1, conf.patch_size, conf.patch_size))
             predictions = []
@@ -384,9 +383,9 @@ def mainFunc(argv):
                 prediction = sess.run(model.y_pred, feed_dict)
                 predictions.append(prediction)
 
-            print("individual prediction shape: {}".format(predictions[0].shape))
+            print("individual training prediction shape: {}".format(predictions[0].shape))
             predictions = np.concatenate(predictions, axis=0)
-            print("Shape of predictions: {}".format(predictions.shape))
+            print("Shape of predictions on training set: {}".format(predictions.shape))
 
             # Save outputs to disk
             for i in range(conf.train_size):
@@ -394,7 +393,7 @@ def mainFunc(argv):
                 img_name = "cnn_ae_train_" + str(i+1)
                 output_path = "../results/CNN_Autoencoder_Output/train/"
                 if not os.path.isdir(output_path):
-                    raise ValueError('no CNN data to run Convolutional Denoising Autoencoder on')
+                    os.mkdir(output_path)
                 prediction = reconstruct_image_from_patches(predictions[i * patches_per_predict_image_dim ** 2:(i + 1) * patches_per_predict_image_dim ** 2, :], patches_per_predict_image_dim, conf.train_image_resize)
                 # resizing test images to 400x400 and saving to disk
                 scipy.misc.imsave(output_path + img_name + ".png", resize_img(prediction, 'train'))

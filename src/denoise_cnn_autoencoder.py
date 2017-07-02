@@ -413,18 +413,18 @@ def mainFunc(argv):
 
                 resized_binarized_output_images = resize_img(binarized_prediction, 'test')
                 scipy.misc.imsave(binarize_output_path + img_name + ".png", resized_binarized_output_images)
-            f, a = plt.subplots(2, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
-            for i in range(conf.examples_to_show):
-                t = reconstruction(test[i*patches_per_image_test:(i+1)*patches_per_image_test,:], (conf.test_image_size // conf.cnn_res)) # (conf.test_image_size // conf.cnn_res) = 38
-                pred = reconstruction(predictions[i*patches_per_image_test:(i+1)*patches_per_image_test,:], 38)
-                a[0][i].imshow(t, cmap='gray', interpolation='none')
-                a[1][i].imshow(pred, cmap='gray', interpolation='none')
-                a[0][i].get_xaxis().set_visible(False)
-                a[0][i].get_yaxis().set_visible(False)
-                a[1][i].get_xaxis().set_visible(False)
-                a[1][i].get_yaxis().set_visible(False)
-            plt.gray()
-            plt.savefig('./cnn_autoencoder_prediction_{}.png'.format(tag))
+            # f, a = plt.subplots(2, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
+            # for i in range(conf.examples_to_show):
+            #     t = reconstruction(test[i*patches_per_image_test:(i+1)*patches_per_image_test,:], (conf.test_image_size // conf.cnn_res)) # (conf.test_image_size // conf.cnn_res) = 38
+            #     pred = reconstruction(predictions[i*patches_per_image_test:(i+1)*patches_per_image_test,:], 38)
+            #     a[0][i].imshow(t, cmap='gray', interpolation='none')
+            #     a[1][i].imshow(pred, cmap='gray', interpolation='none')
+            #     a[0][i].get_xaxis().set_visible(False)
+            #     a[0][i].get_yaxis().set_visible(False)
+            #     a[1][i].get_xaxis().set_visible(False)
+            #     a[1][i].get_yaxis().set_visible(False)
+            # plt.gray()
+            # plt.savefig('./cnn_autoencoder_prediction_{}.png'.format(tag))
 
             print("Finished saving cnn autoencoder test set to disk")
 

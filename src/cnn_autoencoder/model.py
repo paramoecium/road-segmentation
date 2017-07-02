@@ -145,14 +145,14 @@ class cnn_ae_ethan():
         self._init_summary()
 
     def _init_placeholders(self):
-        self.x = tf.placeholder(shape=(None, self.w**2),
+        self.x = tf.placeholder(shape=(None, self.w, self.w),
                                 dtype=tf.float32,
                                 name='encoder_inputs',
                                 )
 
         x_tensor = tf.reshape(self.x, [-1, self.w, self.w, 1])
         self.x_origin = x_tensor
-        self.x_noise = tf.placeholder(shape=(None, self.w**2),
+        self.x_noise = tf.placeholder(shape=(None, self.w, self.w),
                                       dtype=tf.float32,
                                       name='targets',
                                       )
@@ -194,7 +194,7 @@ class cnn_ae_ethan():
         b_e_conv1 = self.bias_variable([16], "b_e_conv1")
         h_e_conv1 = tf.nn.relu(tf.add(self.conv2d(self.x_origin_noise, W_e_conv1), b_e_conv1))
 
-        W_e_conv2 = self.weight_variable([5, 5, 16, 32], "w_e_conv2")
+        W_e_conv2 = self.weight_variable([3, 3, 16, 32], "w_e_conv2")
         b_e_conv2 = self.bias_variable([32], "b_e_conv2")
         h_e_conv2 = tf.nn.relu(tf.add(self.conv2d(h_e_conv1, W_e_conv2), b_e_conv2))
 

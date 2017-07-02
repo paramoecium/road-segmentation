@@ -367,7 +367,8 @@ def mainFunc(argv):
                     raise ValueError('no CNN data to run Convolutional Denoising Autoencoder on')
                 prediction = reconstruction(predictions[i*patches_per_image_test:(i+1)*patches_per_image_test,:], 50) # 38 is the resized test set dim as resolution is 16x16
                 # resizing test images to 608x608 and saving to disk
-                scipy.misc.imsave(output_path + img_name + ".png", resize_img(prediction, 'test'))
+                # scipy.misc.imsave(output_path + img_name + ".png", resize_img(prediction, 'test'))
+                scipy.misc.imsave(output_path + img_name + ".png", prediction) # on resize
 
             f, a = plt.subplots(2, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
             for i in range(conf.examples_to_show):

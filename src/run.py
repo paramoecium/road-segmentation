@@ -11,7 +11,7 @@ are not found cached on the disk, this script automatically trains them
 """
 import glob
 
-import model_baseline2_mato as cnn
+import model_weightedloss as cnn
 import postprocessing as pp
 from cilutil import resizing
 

@@ -1,5 +1,5 @@
 class Config():
-    num_epochs = 1
+    num_epochs = 10
     validation_summary_frequency = 1000
     checkpoint_frequency = 1000
     batch_size = 32
@@ -10,8 +10,8 @@ class Config():
     test_image_size = 608 # test images are of size 608 x 608
     cnn_res = 16
     gt_res = 8
-    train_size = 5 # train data set size
-    test_size = 5 # test data set size
+    train_size = 100 # train data set size
+    test_size = 50 # test data set size
     patch_size = 24
     dropout_train = 1.0
     learning_rate = 0.005
@@ -19,6 +19,6 @@ class Config():
     corruption = 0.075
     visualise_validation = True
     run_on_test_set = True
-    run_on_train_set = True
-    stack_1 = False
-    stack_2 = False
+    run_on_train_set = False
+    stack_1 = True
+    stack_2 = True

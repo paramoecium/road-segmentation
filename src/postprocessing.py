@@ -61,8 +61,7 @@ def apply_postprocessing(img, dictionary, svm):
 #    final_output = set_to_zero_if_no_neighbours(img2)
      
     # SVM-based post-processing
-    result = svm_denoise.denoiseImg(img, svm)
-    result = svm_denoise.denoiseImg(result, svm)
+    result = img
     final_output = np.zeros(img.shape)
     final_output[result >= 0.5] = 1
     
@@ -129,7 +128,7 @@ def generate_output():
         
     D = dict_train.get_dictionary()
     print("Trained dictionary")
-    svm = svm_train.getSVMClassifier()    
+    svm = None
     print("Trained SVM classifier")
     verbose = True
     output_images = []

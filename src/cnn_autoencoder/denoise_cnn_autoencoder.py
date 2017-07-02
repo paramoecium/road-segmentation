@@ -221,26 +221,26 @@ def binarize(image):
     binarized[image > conf.binarize_threshold] = 1
     return binarized
 
-def resize_img(img, opt):
+def resize_img(img, mode):
     """
-    CNN predictions are made at the 36x36 pixel lvl and the test set needs to be at the 608x608
+    CNN predictions are made at the 38x38 pixel lvl and the test set needs to be at the 608x608
     lvl. The function resizes.
     Args:
-        numpy array 36x36 for test or 50x50 for train
+        numpy array 38x38for test or 25x25 for train
     Returns:
         numpy array 608x608 for test or 400x400 for train
     """
-    #print(img.shape)
-    if opt == 'test':
+
+    if mode == 'test':
         size = conf.test_image_size
         blocks = conf.cnn_res # resolution of cnn output of 16x16 pixels are the same class
         steps = conf.test_image_size // blocks # 38
-    elif opt == 'train':
+    elif mode == 'train':
         size = conf.train_image_size
-        blocks = conf.gt_res # resolution of the gt is 8x8 pixels for one class
-        steps = conf.train_image_size // blocks # 50
+        blocks = conf.gt_res # resolution of the gt is 16x16 pixels for one class
+        steps = conf.train_image_size // blocks # 25
     else:
-        raise ValueError('test or train plz')
+        raise ValueError("Invalid mode. Only 'train' or 'test' are supported.")
     dd = np.zeros((size, size))
     for i in range(steps):
         for j in range(steps):

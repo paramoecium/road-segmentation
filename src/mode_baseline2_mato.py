@@ -17,7 +17,7 @@ import scipy.misc
 import patch_extraction_module as pem
 import data_loading_module as dlm
 import constants as const
-
+import median_frequency_balancing as balance
 import cProfile
 import pstats
 import io
@@ -147,34 +147,12 @@ def main(argv=None):  # pylint: disable=unused-argument
     ### BALANCING TRAINING SET ###
     ##############################
     if BALANCE_SIZE_OF_CLASSES:
-        ### AUXILIARY FUNCTION ###
-        def num_of_datapoints_per_class():
-            """Count the number of datapoints in each class."""
-            c0 = 0
-            c1 = 0
-            for i in range(len(train_labels)):
-                if train_labels[i][0] == 1:
-                    c0 += 1
-                else:
-                    c1 += 1
-            print("Number of data points per class: c0 = " + str(c0) + " c1 = " + str(c1))
-            return c0, c1
 
-        ### END OF AUXILIARY FUNCTION ###
-
-        # Computing per class number of data points
-        (c0, c1) = num_of_datapoints_per_class()
-
-        # Balancing
         if IMG_PATCHES_RESTORE:
             print("Skipping balancing - balanced data already loaded from the disk.")
         else:
             print("Balancing training data.")
-            # We apply median frequency class balancing as in arXiv:1411.4734v4
-            c0freq = float(c0) / (c0 + c1)
-            c1freq = float(c1) / (c0 + c1)
-            medianfreq = (c0freq + c1freq) / 2
-            balancing_coefficients = np.array([medianfreq / c0freq, medianfreq / c1freq])
+            balancing_weights = balance.calculate_balancing_weights(train_labels)
 
             train_size = train_labels.shape[0]
 
@@ -448,13 +426,7 @@ def main(argv=None):  # pylint: disable=unused-argument
         print("--------------------")
         return err
 
-    def weighted_loss(logits, labels, num_classes, coefficients, head=None):
-        with tf.name_scope('loss_1'):
-            epsilon = tf.constant(value=1e-10)
-            logits = logits + epsilon
-            softmax = tf.nn.softmax(logits)
-            cross_entropy = -tf.reduce_sum(tf.multiply(labels * tf.log(softmax + epsilon), coefficients), reduction_indices=[1])
-            return cross_entropy
+
     def model(data, train=False):
         """Define the CNN."""
         # CONV. LAYER 1
@@ -533,7 +505,7 @@ def main(argv=None):  # pylint: disable=unused-argument
     ### SETUP LOSS ###
     ##################
     logits = model(train_data_node, True)
-    losses = weighted_loss(logits=logits, labels=train_labels_node, num_classes=NUM_LABELS, coefficients=balancing_coefficients, head=None)
+    losses = balance.weighted_softmax_crossentropy_loss(logits=logits, labels=train_labels_node, weights=balancing_weights)
     loss = tf.reduce_mean(losses)
     tf.summary.scalar('loss', loss)
 

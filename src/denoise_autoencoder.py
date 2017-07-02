@@ -19,10 +19,12 @@ from skimage.transform import resize
 import matplotlib.image as mpimg
 from skimage.transform import resize
 from sklearn.feature_extraction import image
-from scipy.ndimage.interpolation import rotate
 
 from autoencoder.model import ae
 from autoencoder.ae_config import Config as conf
+
+import patch_extraction_module as pem
+import data_loading_module as dlm
 
 
 tf.set_random_seed(123)
@@ -56,20 +58,15 @@ def extract_patches(filename_base, num_images, patch_size=conf.patch_size, phase
             image_filename = filename_base + imageid + ".png"
             if os.path.isfile(image_filename):
                 img = mpimg.imread(image_filename)
-                img = resize(img, (conf.train_image_resize, conf.train_image_resize))
+                img = resize(img, (conf.train_image_resize,conf.train_image_resize))
                 patches.append(image.extract_patches(img, (patch_size, patch_size), extraction_step=1))
-                rot90img = rotate(img, 90, reshape=False, mode='reflect', order=3)
-                patches.append(image.extract_patches(rot90img, (patch_size, patch_size), extraction_step=1))
-                rot45img = rotate(img, 45, reshape=False, mode='reflect', order=3)
-                patches.append(image.extract_patches(rot45img, (patch_size, patch_size), extraction_step=1))
-                rot135img = rotate(img, 135, reshape=False, mode='reflect', order=3)
-                patches.append(image.extract_patches(rot135img, (patch_size, patch_size), extraction_step=1))
+                patches.append(image.extract_patches(np.rot90(img), (patch_size, patch_size), extraction_step=1))
         elif phase == 'test':
             imageid = "raw_test_%d_pixels" % i
             image_filename = filename_base + imageid + ".png"
             if os.path.isfile(image_filename):
                 img = mpimg.imread(image_filename)
-                img = resize(img, (conf.test_image_resize, conf.test_image_resize))
+                img = resize(img, (conf.train_image_resize, conf.train))
                 patches.append(image.extract_patches(img, (patch_size, patch_size), extraction_step=1))
         elif phase == 'train_cnn_output':
             imageid = "raw_satImage_%.3d_pixels" % i
@@ -93,6 +90,10 @@ def reconstruction(img_data, size):
         recontructed image
     """
     patches_per_dim = size - conf.patch_size + 1
+
+    # print("size: {}".format(size))
+    # print("patches_per_dim: {}".format(patches_per_dim))
+    # print("img_data: {}".format(img_data.shape))
     reconstruction = np.zeros((size,size))
     n = np.zeros((size,size))
     idx = 0
@@ -102,28 +103,6 @@ def reconstruction(img_data, size):
             n[i:(i+conf.patch_size),j:(j+conf.patch_size)] += 1
             idx += 1
     return np.divide(reconstruction, n)
-
-def _reconstruction(img_data, size):
-    """
-    Reconstruct single image from flattened array, function replaces values, so good for visualising the corruption process
-    Args:
-        img_data: flattened image array
-        type: size of the image (rescaled)
-    Returns:
-        recontructed image
-    """
-    patches_per_dim = size - conf.patch_size + 1
-
-    print("size: {}".format(size))
-    print("patches_per_dim: {}".format(patches_per_dim))
-    print("img_data: {}".format(img_data.shape))
-    reconstruction = np.zeros((size,size))
-    idx = 0
-    for i in range(patches_per_dim):
-        for j in range(patches_per_dim):
-            reconstruction[i:(i+conf.patch_size),j:(j+conf.patch_size)] =  img_data[idx,:].reshape(conf.patch_size, conf.patch_size)
-            idx += 1
-    return reconstruction
 
 def resize_img(img, opt):
     """
@@ -136,19 +115,20 @@ def resize_img(img, opt):
     """
     #print(img.shape)
     if opt == 'test':
-        img = resize(img, (conf.test_image_size, conf.test_image_size))
-        return img
+        size = conf.test_image_size
+        blocks = conf.cnn_res # resolution of cnn output of 16x16 pixels are the same class
+        steps = conf.test_image_size // blocks # 38
     elif opt == 'train':
         size = conf.train_image_size
-        blocks = 8 #conf.gt_res # resolution of the gt is 8x8 pixels for one class
-        steps = 50 #conf.train_image_size // blocks # 50
-        dd = np.zeros((size, size))
-        for i in range(steps):
-            for j in range(steps):
-                dd[j*blocks:(j+1)*blocks,i*blocks:(i+1)*blocks] = img[j,i]
-        return dd
+        blocks = conf.gt_res # resolution of the gt is 8x8 pixels for one class
+        steps = conf.train_image_size // blocks # 50
     else:
         raise ValueError('test or train plz')
+    dd = np.zeros((size, size))
+    for i in range(steps):
+        for j in range(steps):
+            dd[j*blocks:(j+1)*blocks,i*blocks:(i+1)*blocks] = img[j,i]
+    return dd
 
 
 def mainFunc(argv):
@@ -187,8 +167,8 @@ def mainFunc(argv):
     targets = extract_patches(train_data_filename, conf.train_size, conf.patch_size, 'train')
     targets = np.stack(targets).reshape(-1, conf.patch_size, conf.patch_size) # (20000, 16, 16)
     targets = targets.reshape(len(targets), -1) # (122500, 256) for no rot (145800, 576) for rot and patch size 24
-    print("Shape of targets: {}".format(targets.shape)) # (160, 576)
-    patches_per_image_train = ( 50 - conf.patch_size + 1)**2 ##
+    print("Shape of targets: {}".format(targets.shape))
+    patches_per_image_train = ( (conf.train_image_size//conf.gt_res) - conf.patch_size + 1)**2 ## conf.train_image_size//conf.gt_res = 50 res of gt is 8x8
     print("Patches per train image: {}".format(patches_per_image_train)) # 729 for patch size 24
     validation = np.copy(targets[:conf.val_size*patches_per_image_train,:]) # number of validation patches is 500
     targets = np.copy(targets[patches_per_image_train*conf.val_size:,:])
@@ -205,8 +185,6 @@ def mainFunc(argv):
     model = ae(n_input=int(conf.patch_size*conf.patch_size),
                n_hidden_1=int(conf.patch_size*conf.patch_size/conf.ae_step),
                n_hidden_2=int(conf.patch_size*conf.patch_size/conf.ae_step/conf.ae_step),
-               stack_1=conf.stack_1,
-               stack_2=conf.stack_2,
                learning_rate=conf.learning_rate,
                dropout=conf.dropout_train,
                skip_arch=False)
@@ -297,7 +275,7 @@ def mainFunc(argv):
                 output_path = "../results/Autoencoder_Output/train/"
                 if not os.path.isdir(output_path):
                     raise ValueError('no directory to store Denoising Autoencoder train results in')
-                prediction = reconstruction(predictions[i*patches_per_image_train:(i+1)*patches_per_image_train,:], conf.train_image_resize)
+                prediction = reconstruction(predictions[i*patches_per_image_train:(i+1)*patches_per_image_train,:], 50)
                 # resizing test images to 400x400 and saving to disk
                 scipy.misc.imsave(output_path + img_name + ".png", resize_img(prediction, 'train'))
 
@@ -309,9 +287,9 @@ def mainFunc(argv):
                 inputs = validation[i*patches_per_image_train:(i+1)*patches_per_image_train,:]
                 feed_dict = model.make_inputs_predict(inputs)
                 encode_decode = sess.run(model.y_pred, feed_dict=feed_dict)
-                print("shape of predictions: {}".format(encode_decode.shape)) # (729, 576) (48, 576)
-                val = _reconstruction(inputs, conf.train_image_resize)
-                pred = reconstruction(encode_decode, conf.train_image_resize)
+                print("shape of predictions: {}".format(encode_decode.shape)) # (729, 576)
+                val = reconstruction(inputs, 50)
+                pred = reconstruction(encode_decode, 50)
                 a[0][i].imshow(val, cmap='gray', interpolation='none')
                 a[1][i].imshow(pred, cmap='gray', interpolation='none')
                 a[0][i].get_xaxis().set_visible(False)
@@ -328,8 +306,8 @@ def mainFunc(argv):
                 raise ValueError('no CNN data to run Convolutional Denoising Autoencoder on')
 
             print("Loading test set")
-            patches_per_image_test = ( conf.test_image_resize - conf.patch_size + 1)**2 ## test set images are
-            print("patches per test image: {}".format(patches_per_image_test)) # 729
+            patches_per_image_test = ( (conf.test_image_size // conf.cnn_res) - conf.patch_size + 1)**2 ## 608 / 16 = 38, where 16 is the resolution of the CNN output
+            print("patches per test image: {}".format(patches_per_image_test)) # 225
             test = extract_patches(prediction_test_dir, conf.test_size, conf.patch_size, 'test')
             test = np.stack(test).reshape(-1, conf.patch_size, conf.patch_size)
             test = test.reshape(len(test), -1)
@@ -361,15 +339,15 @@ def mainFunc(argv):
                 output_path = "../results/Autoencoder_Output/test/"
                 if not os.path.isdir(output_path):
                     raise ValueError('no CNN data to run Convolutional Denoising Autoencoder on')
-                prediction = reconstruction(predictions[i*patches_per_image_test:(i+1)*patches_per_image_test,:], conf.test_image_resize)
+                prediction = reconstruction(predictions[i*patches_per_image_test:(i+1)*patches_per_image_test,:], 38) # 38 is the resized test set dim as resolution is 16x16
                 # resizing test images to 608x608 and saving to disk
                 # scipy.misc.imsave(output_path + img_name + ".png", resize_img(prediction, 'test'))
                 scipy.misc.imsave(output_path + img_name + ".png", prediction) # on resize
 
             f, a = plt.subplots(2, conf.examples_to_show, figsize=(conf.examples_to_show, 5))
             for i in range(conf.examples_to_show):
-                t = reconstruction(test[i*patches_per_image_test:(i+1)*patches_per_image_test,:], conf.test_image_resize)
-                pred = reconstruction(predictions[i*patches_per_image_test:(i+1)*patches_per_image_test,:], conf.test_image_resize)
+                t = reconstruction(test[i*patches_per_image_test:(i+1)*patches_per_image_test,:], (conf.test_image_size // conf.cnn_res)) # (conf.test_image_size // conf.cnn_res) = 38
+                pred = reconstruction(predictions[i*patches_per_image_test:(i+1)*patches_per_image_test,:], 38)
                 a[0][i].imshow(t, cmap='gray', interpolation='none')
                 a[1][i].imshow(pred, cmap='gray', interpolation='none')
                 a[0][i].get_xaxis().set_visible(False)

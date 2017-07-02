@@ -17,7 +17,7 @@ import matplotlib.image as mpimg
 from skimage.transform import resize
 from sklearn.feature_extraction import image as skimg
 from tqdm import tqdm
-from model import cnn_ae, cnn_ae_ethan
+from model import cnn_ae_model
 from cnn_ae_config import Config as conf
 from scipy.ndimage.interpolation import rotate
 
@@ -307,7 +307,7 @@ def mainFunc(argv):
     validation = uncorrupted_validation_data
 
     print("Initializing CNN denoising autoencoder")
-    model = cnn_ae_ethan(conf.patch_size, learning_rate=conf.learning_rate)
+    model = cnn_ae_model(conf.patch_size, learning_rate=conf.learning_rate)
 
     print("Starting TensorFlow session")
     with tf.Session(config=configProto) as sess:

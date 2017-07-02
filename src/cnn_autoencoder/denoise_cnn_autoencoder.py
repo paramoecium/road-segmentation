@@ -361,60 +361,15 @@ def mainFunc(argv):
             predict_on_train_set(model, sess)
 
         if conf.run_on_test_set:
-            print("Running the Convolutional Denoising Autoencoder on the predictions")
-            prediction_test_dir = "../results/CNN_Output/test/high_res_raw/"
-            if not os.path.isdir(prediction_test_dir):
-                raise ValueError("Couldn't find directory {}".format(prediction_test_dir))
+            predict_on_test_set(model, sess)
 
-            patches_to_predict = load_patches_to_predict(prediction_test_dir, conf.train_size, conf.patch_size, 'test')
-            print("Shape of patches_to_predict for training data: {}".format(patches_to_predict.shape))
-            patches_per_predict_image_dim = patches_to_predict.shape[1]  # Assume square images
-            patches_to_predict = patches_to_predict.reshape((-1, conf.patch_size, conf.patch_size))
-            predictions = []
-            runs = patches_to_predict.shape[0] // conf.batch_size
-            rem = patches_to_predict.shape[0] % conf.batch_size
-            for i in tqdm(range(runs)):
-                batch_inputs = patches_to_predict[i*conf.batch_size:((i+1)*conf.batch_size),...]
-                feed_dict = model.make_inputs_predict(batch_inputs)
-                prediction = sess.run(model.y_pred, feed_dict)
-                predictions.append(prediction)
-            if rem > 0:
-                batch_inputs = patches_to_predict[runs*conf.batch_size:(runs*conf.batch_size + rem),...]
-                feed_dict = model.make_inputs_predict(batch_inputs)
-                prediction = sess.run(model.y_pred, feed_dict)
-                predictions.append(prediction)
-
-            print("individual training image prediction shape: {}".format(predictions[0].shape))
-            predictions = np.concatenate(predictions, axis=0)
-            print("Shape of training image predictions: {}".format(predictions.shape))
-
-            # Save outputs to disk
-            for i in range(conf.test_size):
-                print("Test img: " + str(i+1))
-                img_name = "cnn_ae_test_" + str(i+1)
-                output_path = "../results/CNN_Autoencoder_Output/test/"
-                binarize_output_path = os.path.join(output_path, "binarized/")
-                if not os.path.exists(output_path):
-                    os.makedirs(output_path)
-                if not os.path.exists(binarize_output_path):
-                    os.makedirs(binarize_output_path)
-                prediction = reconstruct_image_from_patches(
-                    predictions[i * patches_per_predict_image_dim ** 2:(i + 1) * patches_per_predict_image_dim ** 2, :],
-                    patches_per_predict_image_dim, conf.test_image_resize)
-                binarized_prediction = binarize(prediction)
-                # resizing test images to 608x608 and saving to disk
-                resized_greylevel_output_images = resize_img(prediction, 'test')
-                scipy.misc.imsave(output_path + img_name + ".png", resized_greylevel_output_images)
-
-                resized_binarized_output_images = resize_img(binarized_prediction, 'test')
-                scipy.misc.imsave(binarize_output_path + img_name + ".png", resized_binarized_output_images)
 
             print("Finished saving cnn autoencoder test set to disk")
 
 def predict_on_train_set(model, sess):
     print("Running Convolutional Denoising Autoencoder on training images for upstream classification")
     prediction_train_dir = "../results/CNN_Output/training/high_res_raw/"
-    if not os.path.isdir(prediction_train_dir):
+    if not os.path.exists(prediction_train_dir):
         raise ValueError("Couldn't find directory {}".format(prediction_train_dir))
 
     print("Loading train set")
@@ -458,6 +413,56 @@ def predict_on_train_set(model, sess):
         # resizing test images to 400x400 and saving to disk
         scipy.misc.imsave(output_path + img_name + ".png", resize_img(prediction, 'train'))
 
+def predict_on_test_set(model, sess):
+    print("Running the Convolutional Denoising Autoencoder on the predictions")
+    prediction_test_dir = "../results/CNN_Output/test/high_res_raw/"
+    if not os.path.isdir(prediction_test_dir):
+        raise ValueError("Couldn't find directory {}".format(prediction_test_dir))
+
+    patches_to_predict = load_patches_to_predict(prediction_test_dir, conf.train_size, conf.patch_size, 'test')
+    print("Shape of patches_to_predict for training data: {}".format(patches_to_predict.shape))
+    patches_per_predict_image_dim = patches_to_predict.shape[1]  # Assume square images
+    patches_to_predict = patches_to_predict.reshape((-1, conf.patch_size, conf.patch_size))
+    predictions = []
+    runs = patches_to_predict.shape[0] // conf.batch_size
+    rem = patches_to_predict.shape[0] % conf.batch_size
+    for i in tqdm(range(runs)):
+        batch_inputs = patches_to_predict[i * conf.batch_size:((i + 1) * conf.batch_size), ...]
+        feed_dict = model.make_inputs_predict(batch_inputs)
+        prediction = sess.run(model.y_pred, feed_dict)
+        predictions.append(prediction)
+    if rem > 0:
+        batch_inputs = patches_to_predict[runs * conf.batch_size:(runs * conf.batch_size + rem), ...]
+        feed_dict = model.make_inputs_predict(batch_inputs)
+        prediction = sess.run(model.y_pred, feed_dict)
+        predictions.append(prediction)
+
+    print("individual training image prediction shape: {}".format(predictions[0].shape))
+    predictions = np.concatenate(predictions, axis=0)
+    print("Shape of training image predictions: {}".format(predictions.shape))
+
+    output_path = "../results/CNN_Autoencoder_Output/test/"
+    binarize_output_path = os.path.join(output_path, "binarized/")
+    if os.path.isdir(output_path):
+        shutil.rmtree(output_path)
+    os.makedirs(output_path)
+    os.makedirs(binarize_output_path)
+
+    # Save outputs to disk
+    for i in range(conf.test_size):
+        print("Test img: " + str(i + 1))
+        img_name = "cnn_ae_test_" + str(i + 1)
+
+        prediction = reconstruct_image_from_patches(
+            predictions[i * patches_per_predict_image_dim ** 2:(i + 1) * patches_per_predict_image_dim ** 2, :],
+            patches_per_predict_image_dim, conf.test_image_resize)
+        binarized_prediction = binarize(prediction)
+        # resizing test images to 608x608 and saving to disk
+        resized_greylevel_output_images = resize_img(prediction, 'test')
+        scipy.misc.imsave(output_path + img_name + ".png", resized_greylevel_output_images)
+
+        resized_binarized_output_images = resize_img(binarized_prediction, 'test')
+        scipy.misc.imsave(binarize_output_path + img_name + ".png", resized_binarized_output_images)
 def create_uncorrupted_data(train_data_directory, image_indices, patch_size):
     """
     Loads the uncorrupted training (or validation) data (i.e. the groundtruth) from disk, rotates the images

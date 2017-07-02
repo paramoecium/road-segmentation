@@ -20,6 +20,7 @@ from tqdm import tqdm
 from model import cnn_ae_model
 from cnn_ae_config import Config as conf
 from scipy.ndimage.interpolation import rotate
+import shutil
 
 # Random seed for reproducibility. May be removed
 tf.set_random_seed(123)
@@ -144,7 +145,7 @@ def corrupt(data, nu, type='salt_and_pepper'):
 def load_patches_to_predict(directory_path, num_images, patch_size=conf.patch_size, phase='test'):
     """
     Loads prediction images and splits them up into patches.
-    
+
     :param directory_path: The directory to load images from
     :param num_images: Number of images to load
     :param patch_size: The desired patch size. For prediction, the stride will be 1.
@@ -205,7 +206,7 @@ def reconstruct_image_from_patches(img_data, patches_per_predict_image_dim, size
             reconstruction[i:(i+conf.patch_size),j:(j+conf.patch_size)] += img_data[idx,:,:,0]
             n[i:(i+conf.patch_size),j:(j+conf.patch_size)] += 1
             idx += 1
-    
+
     #Return the arithmetic average
     return np.divide(reconstruction, n)
 
@@ -329,14 +330,11 @@ def mainFunc(argv):
         sess.graph.finalize()
 
         print("Starting training")
-        for i in range(conf.num_epochs):
-            print("Training epoch {}".format(i))
-            print("Time elapsed:    %.3fs" % (time.time() - start))
-
+        for i in tqdm(range(conf.num_epochs)):
             n = train.shape[0]
             perm_idx = np.random.permutation(n)
             batch_index = 1
-            for step in tqdm(range(int(n / conf.batch_size))):
+            for step in range(int(n / conf.batch_size)):
                 offset = (batch_index*conf.batch_size) % (n - conf.batch_size)
                 batch_indices = perm_idx[offset:(offset + conf.batch_size)]
 

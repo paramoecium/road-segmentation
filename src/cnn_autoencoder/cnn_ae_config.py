@@ -22,3 +22,4 @@ class Config():
     visualise_validation = False
     run_on_test_set = True
     run_on_train_set = True
+    skip_connection = False

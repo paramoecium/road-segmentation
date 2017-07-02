@@ -6,14 +6,6 @@ import re
 
 foreground_threshold = 0.2 # percentage of pixels > 1 required to assign a foreground label to a patch
 
-# assign a label to a patch
-def patch_to_label(patch):
-    df = np.mean(patch)
-    if df > foreground_threshold:
-        return 1
-    else:
-        return 0
-
 def masks_to_submission(submission_filename, *image_filenames):
     """Converts images into a submission file"""
     with open(submission_filename, 'w') as f:
@@ -25,7 +17,7 @@ def masks_to_submission(submission_filename, *image_filenames):
             for j in range(0, im.shape[1], patch_size):
                 for i in range(0, im.shape[0], patch_size):
                     patch = im[i:i + patch_size, j:j + patch_size]
-                    label = patch_to_label(patch)
+                    label = 1 if np.mean(patch) > foreground_threshold else 0
                     f.writelines("{:03d}_{}_{},{}\n".format(img_number, j, i, label))
 
 

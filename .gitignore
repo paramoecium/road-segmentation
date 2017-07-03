@@ -1,7 +1,6 @@
 # Custom
 objects/
 results/
-tmp/
 data/
 predictions_training/
 test_set_images/

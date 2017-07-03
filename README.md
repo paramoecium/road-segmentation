@@ -22,11 +22,11 @@ This repo was cloned from https://github.com/mato93/road-extraction-from-aerial-
 * Tqdm
 
 # How to run
-
-1. bash setup.sh
-2. cd src
-3. python3 run.py
-
+```bash
+bash setup.sh
+cd src
+python3 run.py
+```
 # Results
 
 The result of running the above will create two submission csv files. submission_cae_patchsize24.csv includes the final results of the median frequency class balancing (MFCB) CNN and the denoising convolutional autoencoder, and the submission_no_postprocessing.csv contains the predictions of the MFCB CNN only.

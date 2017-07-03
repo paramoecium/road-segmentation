@@ -1,5 +1,13 @@
 #!/usr/bin/env bash
 
+# Extract
+mkdir -p data/test_set
+for i in {1..50}
+do
+  cp data/test_set_images/test_$i/*.png data/test_set/
+done
+rm -rf data/test_set_images
+
 # Create data directories
 mkdir -p data/test_set/downsampled
 mkdir -p data/training/groundtruth/downsampled

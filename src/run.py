@@ -30,12 +30,16 @@ if UPSAMPLE:
 cae.mainFunc()
 
 # Create submission file for Kaggle from denoised mask
+baseline_submission_filename = '../submission_no_postprocessing.csv'
 submission_filename = '../submission_cae_patchsize24.csv'
+baseline_image_filenames = []
 image_filenames = []
 for i in range(1, 51):
-    ##image_filename = '../results/CNN_Output/test/high_res_raw/raw_test_' + '%.1d' % i + '_pixels.png' # baseline
+    baseline_image_filename = '../results/CNN_Output/test/high_res_raw/raw_test_' + '%.1d' % i + '_pixels.png' # baseline
     image_filename = '../results/CNN_Autoencoder_Output/test/cnn_ae_test_' + '%.1d' % i + '.png' # cae
     print(image_filename)
     image_filenames.append(image_filename)
+    baseline_image_filenames.append(baseline_image_filename)
 
+binary_masks_to_submission(baseline_submission_filename, *baseline_image_filenames)
 binary_masks_to_submission(submission_filename, *image_filenames)

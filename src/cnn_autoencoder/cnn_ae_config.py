@@ -18,7 +18,7 @@ class Config():
     dropout_train = 1.0
     learning_rate = 0.005
     corruption = 0.05
-    binarize_threshold = 0.1 # The grey level threshold for binarization of the auto encoder result
+    binarize_threshold = 0.2 # The grey level threshold for binarization of the auto encoder result
     run_on_test_set = True
     run_on_train_set = True
     skip_connection = False

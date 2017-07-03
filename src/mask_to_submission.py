@@ -18,7 +18,7 @@ def masks_to_submission(submission_filename, *image_filenames, foreground_thresh
                     label = 1 if np.mean(patch) > foreground_threshold else 0
                     f.writelines("{:03d}_{}_{},{}\n".format(img_number, j, i, label))
 
-def binary_masks_to_submission(submission_filename, *image_filenames):
+def binary_masks_to_submission(submission_filename, *image_filenames, foreground_threshold = 0.2):
     """Converts images into a submission file"""
     with open(submission_filename, 'w') as f:
         f.write('id,prediction\n')
@@ -29,5 +29,5 @@ def binary_masks_to_submission(submission_filename, *image_filenames):
             for j in range(0, im.shape[1], patch_size):
                 for i in range(0, im.shape[0], patch_size):
                     patch = im[i:i + patch_size, j:j + patch_size]
-                    label = 1 if np.mean(patch) > 0.5 else 0
+                    label = 1 if np.mean(patch) > foreground_threshold else 0
                     f.writelines("{:03d}_{}_{},{}\n".format(img_number, j, i, label))

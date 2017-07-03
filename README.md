@@ -33,12 +33,9 @@ The result of running the above will create two submission csv files. submission
 
 # Folder Structure
 
-|-- **src**
-
-    |-- **baseline**
-    
-        |-- **model_baseline1.py**: defines the first baseline for the project. Provided by CIL TAs.
-        
+|-- **src** <br>
+    |-- **baseline** <br>
+        |-- **model_baseline1.py**: defines the first baseline for the project. Provided by CIL TAs. <br>    
     |-- **model_baseline2.py**: defines the second baseline. Provided by previous group, cloned from [here](https://github.com/mato93/road-extraction-from-aerial-images).
     
     |-- **constants_baseline2.py**: defines the constants used for second baseline. Provided by previous group, cloned from [here](https://github.com/mato93/road-extraction-from-aerial-images).

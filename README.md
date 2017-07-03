@@ -34,21 +34,21 @@ The result of running the above will create two submission csv files. submission
 # Folder Structure
 
 |-- **src** <br>
-&ensp;|-- **baseline** <br>
-&ensp;&ensp;|-- **model_baseline1.py**: defines the first baseline for the project. Provided by CIL TAs. <br>    
-&ensp;&ensp;|-- **model_baseline2.py**: defines the second baseline. Provided by previous group, cloned from [here](https://github.com/mato93/road-extraction-from-aerial-images).
-&ensp;|-- **constants_baseline2.py**: defines the constants used for second baseline. Provided by previous group, cloned from [here](https://github.com/mato93/road-extraction-from-aerial-images).
-&ensp;|-- **data_loading_module.py**: helper functions for baseline 2 and CNN with weighted loss. Provided by previous group, cloned from [here](https://github.com/mato93/road-extraction-from-aerial-images).
-&ensp;|-- **patch_extraction_module.py**: helper functions for baseline 2 and CNN with weighted loss. Provided by previous group, cloned from [here](https://github.com/mato93/road-extraction-from-aerial-images).
-&ensp;|-- **model_weightedloss.py**: defines the median frequency class balancing CNN. Adapted from [previous group](https://github.com/mato93/road-extraction-from-aerial-images)
-&ensp;|-- **median_frequency_balancing.py**: helper function for the median frequcny class balancing CNN.
-&ensp;|-- **constants.py**: config for the median frequency class balancing CNN.
-&ensp;|-- **autoencoder**
-&ensp;&ensp;|-- **model.py**: defines the model of the autoencoder.
-&ensp;&ensp;|-- **ae_config.py**: defines the constants for the autoencoder.
-&ensp;&ensp;|-- **denoise_autoencoder.py**: runs the autoencoder.
-&ensp;|-- **cnn_autoencoder**
-&ensp;&ensp;|-- **model.py**: defines the convolutional autoencoder model.
-&ensp;&ensp;|-- **cnn_ae_config.py**: defines the config for the convolutional autoencoder.
-&ensp;&ensp;|-- **denoise_cnn_autoencoder.py**: runs the convolutional autoencoder.
-&ensp;|-- **mask_to_submission.py**: Converts test images to submission csv file. Provided by CIL TAs
+&ensp;&ensp;|-- **baseline** <br>
+&ensp;&ensp;&ensp;&ensp;|-- **model_baseline1.py**: defines the first baseline for the project. Provided by CIL TAs. <br>
+&ensp;&ensp;&ensp;&ensp;|-- **model_baseline2.py**: defines the second baseline. Provided by previous group, cloned from [here](https://github.com/mato93/road-extraction-from-aerial-images). <br>
+&ensp;&ensp;|-- **constants_baseline2.py**: defines the constants used for second baseline. Provided by previous group, cloned from [here](https://github.com/mato93/road-extraction-from-aerial-images). <br>
+&ensp;&ensp;|-- **data_loading_module.py**: helper functions for baseline 2 and CNN with weighted loss. Provided by previous group, cloned from [here](https://github.com/mato93/road-extraction-from-aerial-images). <br>
+&ensp;&ensp;|-- **patch_extraction_module.py**: helper functions for baseline 2 and CNN with weighted loss. Provided by previous group, cloned from [here](https://github.com/mato93/road-extraction-from-aerial-images). <br>
+&ensp;&ensp;|-- **model_weightedloss.py**: defines the median frequency class balancing CNN. Adapted from [previous group](https://github.com/mato93/road-extraction-from-aerial-images). <br>
+&ensp;&ensp;|-- **median_frequency_balancing.py**: helper function for the median frequcny class balancing CNN. <br>
+&ensp;&ensp;|-- **constants.py**: config for the median frequency class balancing CNN. <br>
+&ensp;&ensp;|-- **autoencoder** <br>
+&ensp;&ensp;&ensp;&ensp;|-- **model.py**: defines the model of the autoencoder. <br>
+&ensp;&ensp;&ensp;&ensp;|-- **ae_config.py**: defines the constants for the autoencoder. <br>
+&ensp;&ensp;&ensp;&ensp;|-- **denoise_autoencoder.py**: runs the autoencoder. <br>
+&ensp;&ensp;|-- **cnn_autoencoder** <br>
+&ensp;&ensp;&ensp;&ensp;|-- **model.py**: defines the convolutional autoencoder model. <br>
+&ensp;&ensp;&ensp;&ensp;|-- **cnn_ae_config.py**: defines the config for the convolutional autoencoder. <br>
+&ensp;&ensp;&ensp;&ensp;|-- **denoise_cnn_autoencoder.py**: runs the convolutional autoencoder. <br>
+&ensp;&ensp;|-- **mask_to_submission.py**: Converts test images to submission csv file. Provided by CIL TAs. <br>

@@ -23,6 +23,9 @@ This repo was cloned from https://github.com/mato93/road-extraction-from-aerial-
 * scipy
 
 # How to run
+1. Create the `./data/` directory.
+2. Add the unzipped kaggle training and test_set to the `./data/` directory.
+3. Run the following commands:
 ```bash
 bash setup.sh
 cd src

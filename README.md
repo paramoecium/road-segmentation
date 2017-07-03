@@ -20,6 +20,7 @@ This repo was cloned from https://github.com/mato93/road-extraction-from-aerial-
 * Pillow
 * Matplotlib
 * Tqdm
+* scipy
 
 # How to run
 ```bash

@@ -34,22 +34,40 @@ The result of running the above will create two submission csv files. submission
 # Folder Structure
 
 |-- **src**
+
     |-- **baseline**
+    
         |-- **model_baseline1.py**: defines the first baseline for the project. Provided by CIL TAs.
+        
     |-- **model_baseline2.py**: defines the second baseline. Provided by previous group, cloned from [here](https://github.com/mato93/road-extraction-from-aerial-images).
+    
     |-- **constants_baseline2.py**: defines the constants used for second baseline. Provided by previous group, cloned from [here](https://github.com/mato93/road-extraction-from-aerial-images).
+    
     |-- **data_loading_module.py**: helper functions for baseline 2 and CNN with weighted loss. Provided by previous group, cloned from [here](https://github.com/mato93/road-extraction-from-aerial-images).
+    
     |-- **patch_extraction_module.py**: helper functions for baseline 2 and CNN with weighted loss. Provided by previous group, cloned from [here](https://github.com/mato93/road-extraction-from-aerial-images).
+    
     |-- **model_weightedloss.py**: defines the median frequency class balancing CNN. Adapted from [previous group](https://github.com/mato93/road-extraction-from-aerial-images)
+    
     |-- **median_frequency_balancing.py**: helper function for the median frequcny class balancing CNN
+    
     |-- **constants.py**: config for the median frequency class balancing CNN.
+    
     |-- **autoencoder**
+    
         |-- **model.py**: defines the model of the autoencoder.
+        
         |-- **ae_config.py**: defines the constants for the autoencoder.
+        
         |-- **denoise_autoencoder.py**: runs the autoencoder.
+        
     |-- **cnn_autoencoder**
+    
         |-- **model.py**: defines the convolutional autoencoder model.
+        
         |-- **cnn_ae_config.py**: defines the config for the convolutional autoencoder.
+        
         |-- **denoise_cnn_autoencoder.py**: runs the convolutional autoencoder.
+        
     |-- **mask_to_submission.py**: Converts test images to submission csv file. Provided by CIL TAs
 

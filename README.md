@@ -52,3 +52,5 @@ The result of running the above will create two submission csv files. submission
 &ensp;&ensp;&ensp;&ensp;|-- **cnn_ae_config.py**: defines the config for the convolutional autoencoder. <br>
 &ensp;&ensp;&ensp;&ensp;|-- **denoise_cnn_autoencoder.py**: runs the convolutional autoencoder. <br>
 &ensp;&ensp;|-- **mask_to_submission.py**: Converts test images to submission csv file. Provided by CIL TAs. <br>
+|-- **notebooks** <br>
+&ensp;&ensp; |-- **ImgCorruptionSandbox.ipynb**: Notebook which demonstrates the corruption process for the denoising autoencoders. <br>

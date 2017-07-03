@@ -25,8 +25,6 @@ mkdir -p results/CNN_Autoencoder_Output/test
 mkdir -p results/CNN_Autoencoder_Output/train
 mkdir -p logs/CNN_Autoencoder
 
-mkdir -p results/SVM/
-
 # Create tmp directories to hold TensorFlow results
 mkdir -p tmp
 mkdir -p src/baseline/tmp

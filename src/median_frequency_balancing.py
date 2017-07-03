@@ -1,3 +1,5 @@
+"""Helper funcions for model_weightedloss.py"""
+
 import numpy as np
 import tensorflow as tf
 

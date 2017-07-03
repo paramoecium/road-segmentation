@@ -12,7 +12,7 @@ are not found cached on the disk, this script automatically trains them
 import glob
 from mask_to_submission import masks_to_submission, binary_masks_to_submission
 import model_weightedloss as cnn
-import postprocessing as pp
+import cnn_autoencoder.denoise_cnn_autoencoder as cae
 from cilutil import resizing
 
 # Train CNN
@@ -27,10 +27,10 @@ if UPSAMPLE:
     resizing.upsample_test(test_filenames)
 
 # Apply post processing to CNN output
-#pp.generate_output()
+cae.mainFunc()
 
 # Create submission file for Kaggle from denoised mask
-submission_filename = 'submission_cae_ethan_patchsize24.csv'
+submission_filename = '../submission_cae_patchsize24.csv'
 image_filenames = []
 for i in range(1, 51):
     ##image_filename = '../results/CNN_Output/test/high_res_raw/raw_test_' + '%.1d' % i + '_pixels.png' # baseline

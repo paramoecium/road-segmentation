@@ -33,7 +33,7 @@ NP_SEED = int(time.time())
 BATCH_SIZE = 32
 BALANCE_SIZE_OF_CLASSES = True  # recommended to leave True
 
-RESTORE_MODEL = False
+RESTORE_MODEL = True
 TERMINATE_AFTER_TIME = True
 NUM_EPOCHS = 1
 MAX_TRAINING_TIME_IN_SEC = 60*1 #20 * 3600  # NB: 28800 = 8 hours
@@ -577,7 +577,7 @@ def main(argv=None):  # pylint: disable=unused-argument
     #######################
     with tf.Session() as s:
         if RESTORE_MODEL:
-            saver.restore(s, tf.train.latest_checkpoint(FLAGS.train_dir))
+            saver.restore(s, "../tmp/model.ckpt")
             print("### MODEL RESTORED ###")
         else:
             tf.initialize_all_variables().run()

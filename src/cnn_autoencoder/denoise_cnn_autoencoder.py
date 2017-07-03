@@ -18,8 +18,8 @@ import matplotlib.image as mpimg
 from skimage.transform import resize
 from sklearn.feature_extraction import image as skimg
 from tqdm import tqdm
-from model import cnn_ae_model
-from cnn_ae_config import Config as conf
+from cnn_autoencoder.model import cnn_ae_model
+from cnn_autoencoder.cnn_ae_config import Config as conf
 from scipy.ndimage.interpolation import rotate
 import shutil
 
@@ -249,7 +249,7 @@ def resize_img(img, mode):
             dd[j*blocks:(j+1)*blocks,i*blocks:(i+1)*blocks] = img[j,i]
     return dd
 
-def mainFunc(argv):
+def mainFunc(argv = []):
     def printUsage():
         print('main.py -n <num_cores> -t <tag>')
         print('num_cores = Number of cores requested from the cluster. Set to -1 to leave unset')

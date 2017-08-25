@@ -1,20 +1,20 @@
 # Road Extraction from Aerial Images
 This repository contains the submission for the student project in the "Computational Intelligence Lab" course at ETH Zürich in spring 2017. The goal of the projects was to find a novel solution to a satellite imagery segmentation problem.
 
-# Authors
+### Authors
 
 * [Florian Chlan](https://github.com/flock0)
 * [Samuel Kessler](https://github.com/skezle)
 * [Yu-chen Tsai](https://github.com/paramoecium)
 
-# Project Report
+### Project Report
 Can be found [here](https://github.com/paramoecium/road-segmentation/blob/master/docs/report.pdf)
 
-# Acknowledgements
+### Acknowledgements
 
 This repo was cloned from https://github.com/mato93/road-extraction-from-aerial-images.
 
-# Dependencies
+### Dependencies
 
 * Python 3.5.3+
 * Tensorflow 1.1.0
@@ -26,7 +26,7 @@ This repo was cloned from https://github.com/mato93/road-extraction-from-aerial-
 * Tqdm
 * scipy
 
-# How to run
+### How to run
 1. Create the `./data/` directory.
 2. Add the unzipped kaggle training and test_set to the `./data/` directory.
 3. Run the following commands:
@@ -35,11 +35,11 @@ bash setup.sh
 cd src
 python3 run.py
 ```
-# Results
+### Results
 
 The result of running the above will create two submission csv files. submission_cae_patchsize24.csv includes the final results of the median frequency class balancing (MFCB) CNN and the denoising convolutional autoencoder, and the submission_no_postprocessing.csv contains the predictions of the MFCB CNN only.
 
-# Folder Structure
+### Folder Structure
 
 |-- **src** <br>
 &ensp;&ensp;|-- **baseline** <br>

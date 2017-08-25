@@ -1,10 +1,14 @@
 # Road Extraction from Aerial Images
+This repository contains the submission for the student project in the "Computational Intelligence Lab" course at ETH Zürich in spring 2017. The goal of the projects was to find a novel solution to a satellite imagery segmentation problem.
 
 # Authors
 
 * [Florian Chlan](https://github.com/flock0)
 * [Samuel Kessler](https://github.com/skezle)
 * [Yu-chen Tsai](https://github.com/paramoecium)
+
+# Project Peport
+Can be found [here](https://github.com/paramoecium/road-segmentation/blob/master/docs/report.pdf)
 
 # Acknowledgements
 

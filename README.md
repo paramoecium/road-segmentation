@@ -7,7 +7,7 @@ This repository contains the submission for the student project in the "Computat
 * [Samuel Kessler](https://github.com/skezle)
 * [Yu-chen Tsai](https://github.com/paramoecium)
 
-# Project Peport
+# Project Report
 Can be found [here](https://github.com/paramoecium/road-segmentation/blob/master/docs/report.pdf)
 
 # Acknowledgements
